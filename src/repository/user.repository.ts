@@ -8,7 +8,7 @@ export type UpsertUserFromClerkInput = {
 };
 
 export const userRepository = {
-  upsertUserFromClerk: async (input: UpsertUserFromClerkInput) => {
+  upsertUser: async (input: UpsertUserFromClerkInput) => {
     return prisma.user.upsert({
       where: {
         clerkId: input.clerkId,

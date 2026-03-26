@@ -1,3 +1,4 @@
+import { env } from "../config/env.js";
 import { AppError } from "../errors/app-error.js";
 import type { getClerkUserById } from "../lib/clerk.js";
 
@@ -31,5 +32,12 @@ export const AppHelper = {
     }
 
     throw new AppError("Clerk user is missing a primary email address.", 422);
+  },
+  _getClerkSecretKey: () => {
+    if (!env.clerkSecretKey) {
+      throw new AppError("Clerk server authentication is not configured.", 500);
+    }
+
+    return env.clerkSecretKey;
   },
 };

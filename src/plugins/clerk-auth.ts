@@ -1,6 +1,6 @@
 import fp from "fastify-plugin";
 import { AppError } from "../errors/app-error.js";
-import { verifyClerkSessionToken } from "../lib/clerk.js";
+import { ClerkLib } from "../lib/clerk.js";
 
 export const clerkAuthPlugin = fp(async (fastify) => {
   fastify.decorateRequest("auth", null);
@@ -18,7 +18,7 @@ export const clerkAuthPlugin = fp(async (fastify) => {
       throw new AppError("Unauthorized", 401);
     }
 
-    const payload = await verifyClerkSessionToken(token);
+    const payload = await ClerkLib.verifyClerkSessionToken(token);
 
     if (!payload.sub) {
       throw new AppError("Unauthorized", 401);

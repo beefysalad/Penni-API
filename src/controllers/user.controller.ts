@@ -9,7 +9,7 @@ export const userController = {
       throw new AppError("Unauthorized", 401);
     }
 
-    const user = await userService.syncCurrentUser(request.auth.clerkUserId);
+    const user = await userService.syncUser(request.auth.clerkUserId);
 
     return {
       ...user,
