@@ -1,17 +1,19 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const verifyClerkSessionToken = vi.fn();
-const syncCurrentUser = vi.fn();
+const syncUser = vi.fn();
 
 vi.mock("../src/lib/clerk.js", () => ({
-  verifyClerkSessionToken,
-  getClerkUserById: vi.fn(),
+  ClerkLib: {
+    verifyClerkSessionToken,
+    getClerkUserById: vi.fn(),
+  },
   clerkClient: {},
 }));
 
 vi.mock("../src/services/user.services.js", () => ({
   userService: {
-    syncCurrentUser,
+    syncUser,
   },
 }));
 
@@ -48,14 +50,15 @@ describe("me", () => {
       sid: "sess_123",
     });
 
-    syncCurrentUser.mockResolvedValue({
+    syncUser.mockResolvedValue({
       id: "user_1",
       clerkId: "user_clerk_123",
       firstName: "Pat",
       lastName: "Zephyr",
       email: "pat@example.com",
-      createdAt: new Date("2026-03-26T00:00:00.000Z").toISOString(),
-      updatedAt: new Date("2026-03-26T00:00:00.000Z").toISOString(),
+      onboarded: false,
+      createdAt: new Date("2026-03-26T00:00:00.000Z"),
+      updatedAt: new Date("2026-03-26T00:00:00.000Z"),
     });
 
     const response = await app.inject({
@@ -68,13 +71,14 @@ describe("me", () => {
 
     expect(response.statusCode).toBe(200);
     expect(verifyClerkSessionToken).toHaveBeenCalledWith("valid-token");
-    expect(syncCurrentUser).toHaveBeenCalledWith("user_clerk_123");
+    expect(syncUser).toHaveBeenCalledWith("user_clerk_123");
     expect(response.json()).toEqual({
       id: "user_1",
       clerkId: "user_clerk_123",
       firstName: "Pat",
       lastName: "Zephyr",
       email: "pat@example.com",
+      onboarded: false,
       createdAt: "2026-03-26T00:00:00.000Z",
       updatedAt: "2026-03-26T00:00:00.000Z",
     });

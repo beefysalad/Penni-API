@@ -1,6 +1,5 @@
 import { env } from "../config/env.js";
 import { AppError } from "../errors/app-error.js";
-import type { getClerkUserById } from "../lib/clerk.js";
 
 export const AppHelper = {
   _serializeDate: (value: Date | string) => {
@@ -12,7 +11,13 @@ export const AppHelper = {
     return name?.trim() ?? "";
   },
   _getPrimaryEmailAddress: (
-    clerkUser: Awaited<ReturnType<typeof getClerkUserById>>,
+    clerkUser: {
+      primaryEmailAddressId: string | null;
+      emailAddresses: Array<{
+        id: string;
+        emailAddress: string;
+      }>;
+    },
   ) => {
     if (clerkUser.primaryEmailAddressId) {
       const primaryEmailAddress = clerkUser.emailAddresses.find(

@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -13,11 +8,291 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
-  firstName String
-  lastName  String
-  email     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String          @id @default(cuid())
+  clerkId         String          @unique
+  firstName       String
+  lastName        String
+  email           String          @unique
+  onboarded       Boolean         @default(false)
+  timezone        String          @default("Asia/Singapore")
+  defaultCurrency String          @default("PHP")
+  preferences     UserPreference?
+  accounts        Account[]
+  categories      Category[]
+  transactions    Transaction[]
+  budgets         Budget[]
+  plannedItems    PlannedItem[]
+  insights        Insight[]
+  syncOperations  SyncOperation[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  clientUpdatedAt DateTime?
+}
+
+model UserPreference {
+  id                  String           @id @default(cuid())
+  userId              String           @unique
+  currency            String           @default("PHP")
+  weekStartsOn        Weekday          @default(MONDAY)
+  summaryDay          Weekday          @default(SUNDAY)
+  alertSensitivity    AlertSensitivity @default(MEDIUM)
+  monthlyBudgetGoal   Decimal?         @db.Decimal(14, 2)
+  includeWeekends     Boolean          @default(true)
+  insightCardsEnabled Boolean          @default(true)
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+}
+
+model Account {
+  id              String        @id @default(cuid())
+  clientId        String?       @unique
+  userId          String
+  name            String
+  type            AccountType
+  currency        String        @default("PHP")
+  balance         Decimal       @db.Decimal(14, 2)
+  institutionName String?
+  isArchived      Boolean       @default(false)
+  lastSyncedAt    DateTime?
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions    Transaction[]
+  plannedItems    PlannedItem[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+  clientUpdatedAt DateTime?
+
+  @@index([userId])
+  @@index([userId, type])
+}
+
+model Category {
+  id              String          @id @default(cuid())
+  clientId        String?         @unique
+  userId          String
+  name            String
+  slug            String
+  type            TransactionType
+  icon            String?
+  colorHex        String?
+  isDefault       Boolean         @default(false)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions    Transaction[]
+  budgets         Budget[]
+  plannedItems    PlannedItem[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  clientUpdatedAt DateTime?
+
+  @@unique([userId, slug])
+  @@index([userId, type])
+}
+
+model Transaction {
+  id              String            @id @default(cuid())
+  clientId        String?           @unique
+  userId          String
+  accountId       String?
+  categoryId      String?
+  plannedItemId   String?
+  type            TransactionType
+  source          TransactionSource @default(MANUAL)
+  title           String
+  notes           String?
+  amount          Decimal           @db.Decimal(14, 2)
+  currency        String            @default("PHP")
+  transactionAt   DateTime
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account         Account?          @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  category        Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  plannedItem     PlannedItem?      @relation(fields: [plannedItemId], references: [id], onDelete: SetNull)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
+  clientUpdatedAt DateTime?
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([categoryId])
+  @@index([transactionAt])
+  @@index([userId, transactionAt])
+}
+
+model Budget {
+  id              String    @id @default(cuid())
+  clientId        String?   @unique
+  userId          String
+  categoryId      String?
+  name            String?
+  amount          Decimal   @db.Decimal(14, 2)
+  currency        String    @default("PHP")
+  alertThreshold  Int       @default(80)
+  periodStart     DateTime
+  periodEnd       DateTime
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category        Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+  clientUpdatedAt DateTime?
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([userId, periodStart, periodEnd])
+}
+
+model PlannedItem {
+  id               String              @id @default(cuid())
+  clientId         String?             @unique
+  userId           String
+  accountId        String?
+  categoryId       String?
+  type             TransactionType
+  title            String
+  notes            String?
+  amount           Decimal             @db.Decimal(14, 2)
+  currency         String              @default("PHP")
+  startDate        DateTime
+  recurrence       RecurrenceFrequency
+  isActive         Boolean             @default(true)
+  nextOccurrenceAt DateTime?
+  lastProcessedAt  DateTime?
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account          Account?            @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  category         Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  transactions     Transaction[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  deletedAt        DateTime?
+  clientUpdatedAt  DateTime?
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([categoryId])
+  @@index([nextOccurrenceAt])
+}
+
+model Insight {
+  id          String          @id @default(cuid())
+  userId      String
+  kind        InsightKind
+  severity    InsightSeverity @default(MEDIUM)
+  title       String
+  body        String
+  metadata    Json?
+  surfacedAt  DateTime        @default(now())
+  readAt      DateTime?
+  dismissedAt DateTime?
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([kind])
+  @@index([surfacedAt])
+}
+
+model SyncOperation {
+  id              String         @id @default(cuid())
+  userId          String
+  entityType      SyncEntityType
+  action          SyncAction
+  status          SyncStatus     @default(PENDING)
+  clientId        String?
+  serverId        String?
+  payload         Json?
+  errorMessage    String?
+  attemptCount    Int            @default(0)
+  lastAttemptAt   DateTime?
+  nextRetryAt     DateTime?
+  processedAt     DateTime?
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  clientUpdatedAt DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([entityType, status])
+}
+
+enum TransactionType {
+  EXPENSE
+  INCOME
+}
+
+enum TransactionSource {
+  MANUAL
+  RECURRING
+  IMPORTED
+}
+
+enum AccountType {
+  CASH
+  BANK_ACCOUNT
+  E_WALLET
+  CREDIT_CARD
+  OTHER
+}
+
+enum RecurrenceFrequency {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum InsightKind {
+  SPENDING_SPIKE
+  CATEGORY_DRIFT
+  BUDGET_RISK
+  LOW_BALANCE
+  UPCOMING_BILL
+}
+
+enum InsightSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SyncEntityType {
+  USER
+  ACCOUNT
+  CATEGORY
+  TRANSACTION
+  BUDGET
+  PLANNED_ITEM
+}
+
+enum SyncAction {
+  UPSERT
+  DELETE
+}
+
+enum SyncStatus {
+  PENDING
+  PROCESSING
+  SYNCED
+  FAILED
+  CONFLICT
+}
+
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum AlertSensitivity {
+  LOW
+  MEDIUM
+  HIGH
 }

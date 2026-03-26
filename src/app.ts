@@ -12,6 +12,8 @@ import { corsPlugin } from "./plugins/cors.js";
 import { prismaPlugin } from "./plugins/prisma.js";
 import { clerkAuthPlugin } from "./plugins/clerk-auth.js";
 import { userRoutes } from "./routes/user.routes.js";
+import { accountRoutes } from "./routes/account.routes.js";
+import { categoryRoutes } from "./routes/category.routes.js";
 
 export function buildServer() {
   const server = fastify({
@@ -30,6 +32,8 @@ export function buildServer() {
 
   server.register(healthRoutes, { prefix: "/api" });
   server.register(userRoutes, { prefix: "/api" });
+  server.register(accountRoutes, { prefix: "/api" });
+  server.register(categoryRoutes, { prefix: "/api" });
 
   return server;
 }

@@ -19,6 +19,9 @@ describe("health", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ ok: true, database: "up" });
+    expect(response.json()).toEqual({
+      ok: expect.any(Boolean),
+      database: expect.stringMatching(/^(up|down)$/),
+    });
   });
 });

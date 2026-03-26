@@ -2,7 +2,7 @@ import { prisma } from "../lib/prisma.js";
 
 export const healthRepository = {
   getHealthStatus: async () => {
-    let database = "down";
+    let database: "up" | "down" = "down";
 
     try {
       await prisma.$queryRaw`SELECT 1`;

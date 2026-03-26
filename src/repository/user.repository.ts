@@ -8,6 +8,14 @@ export type UpsertUserFromClerkInput = {
 };
 
 export const userRepository = {
+  findUserByClerkId: async (clerkId: string) => {
+    return prisma.user.findUnique({
+      where: {
+        clerkId,
+      },
+    });
+  },
+
   upsertUser: async (input: UpsertUserFromClerkInput) => {
     return prisma.user.upsert({
       where: {
@@ -18,6 +26,17 @@ export const userRepository = {
         email: input.email,
         firstName: input.firstName,
         lastName: input.lastName,
+      },
+    });
+  },
+
+  updateOnboarded: async (clerkId: string, onboarded: boolean) => {
+    return prisma.user.update({
+      where: {
+        clerkId,
+      },
+      data: {
+        onboarded,
       },
     });
   },
