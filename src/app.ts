@@ -14,6 +14,9 @@ import { clerkAuthPlugin } from "./plugins/clerk-auth.js";
 import { userRoutes } from "./routes/user.routes.js";
 import { accountRoutes } from "./routes/account.routes.js";
 import { categoryRoutes } from "./routes/category.routes.js";
+import { transactionRoutes } from "./routes/transaction.routes.js";
+import { plannedItemRoutes } from "./routes/planned-item.routes.js";
+import { budgetRoutes } from "./routes/budget.routes.js";
 
 export function buildServer() {
   const server = fastify({
@@ -34,6 +37,9 @@ export function buildServer() {
   server.register(userRoutes, { prefix: "/api" });
   server.register(accountRoutes, { prefix: "/api" });
   server.register(categoryRoutes, { prefix: "/api" });
+  server.register(transactionRoutes, { prefix: "/api" });
+  server.register(plannedItemRoutes, { prefix: "/api" });
+  server.register(budgetRoutes, { prefix: "/api" });
 
   return server;
 }
