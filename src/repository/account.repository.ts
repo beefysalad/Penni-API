@@ -8,6 +8,9 @@ export type CreateAccountInput = {
   type: "CASH" | "BANK_ACCOUNT" | "E_WALLET" | "CREDIT_CARD" | "OTHER";
   currency: string;
   balance: string;
+  creditLimit?: string;
+  availableCredit?: string;
+  dueDayOfMonth?: number;
   institutionName?: string;
   clientUpdatedAt?: string;
 };
@@ -35,6 +38,9 @@ export const accountRepository = {
         type: input.type,
         currency: input.currency,
         balance: input.balance,
+        ...(input.creditLimit ? { creditLimit: input.creditLimit } : {}),
+        ...(input.availableCredit ? { availableCredit: input.availableCredit } : {}),
+        ...(input.dueDayOfMonth ? { dueDayOfMonth: input.dueDayOfMonth } : {}),
         ...(input.clientId ? { clientId: input.clientId } : {}),
         ...(input.institutionName
           ? { institutionName: input.institutionName }
@@ -75,6 +81,11 @@ export const accountRepository = {
         ...(input.type !== undefined ? { type: input.type } : {}),
         ...(input.currency !== undefined ? { currency: input.currency } : {}),
         ...(input.balance !== undefined ? { balance: input.balance } : {}),
+        ...(input.creditLimit !== undefined ? { creditLimit: input.creditLimit } : {}),
+        ...(input.availableCredit !== undefined
+          ? { availableCredit: input.availableCredit }
+          : {}),
+        ...(input.dueDayOfMonth !== undefined ? { dueDayOfMonth: input.dueDayOfMonth } : {}),
         ...(input.institutionName !== undefined
           ? { institutionName: input.institutionName }
           : {}),

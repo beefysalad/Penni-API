@@ -24,6 +24,9 @@ export const accountService = {
       type: input.type,
       currency: input.currency,
       balance: input.balance,
+      ...(input.creditLimit ? { creditLimit: input.creditLimit } : {}),
+      ...(input.availableCredit ? { availableCredit: input.availableCredit } : {}),
+      ...(input.dueDayOfMonth ? { dueDayOfMonth: input.dueDayOfMonth } : {}),
       ...(input.clientId ? { clientId: input.clientId } : {}),
       ...(input.institutionName ? { institutionName: input.institutionName } : {}),
       ...(input.clientUpdatedAt
@@ -45,6 +48,11 @@ export const accountService = {
       ...(input.type !== undefined ? { type: input.type } : {}),
       ...(input.currency !== undefined ? { currency: input.currency } : {}),
       ...(input.balance !== undefined ? { balance: input.balance } : {}),
+      ...(input.creditLimit !== undefined ? { creditLimit: input.creditLimit } : {}),
+      ...(input.availableCredit !== undefined
+        ? { availableCredit: input.availableCredit }
+        : {}),
+      ...(input.dueDayOfMonth !== undefined ? { dueDayOfMonth: input.dueDayOfMonth } : {}),
       ...(input.institutionName !== undefined
         ? { institutionName: input.institutionName }
         : {}),

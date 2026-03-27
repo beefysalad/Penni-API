@@ -53,6 +53,9 @@ model Account {
   type            AccountType
   currency        String        @default("PHP")
   balance         Decimal       @db.Decimal(14, 2)
+  creditLimit     Decimal?      @db.Decimal(14, 2)
+  availableCredit Decimal?      @db.Decimal(14, 2)
+  dueDayOfMonth   Int?
   institutionName String?
   isArchived      Boolean       @default(false)
   lastSyncedAt    DateTime?

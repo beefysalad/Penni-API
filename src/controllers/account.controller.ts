@@ -12,6 +12,9 @@ function serializeAccount(account: Awaited<ReturnType<typeof accountService.crea
   return {
     ...account,
     balance: account.balance.toString(),
+    creditLimit: account.creditLimit ? account.creditLimit.toString() : null,
+    availableCredit: account.availableCredit ? account.availableCredit.toString() : null,
+    dueDayOfMonth: account.dueDayOfMonth ?? null,
     lastSyncedAt: account.lastSyncedAt
       ? AppHelper._serializeDate(account.lastSyncedAt)
       : null,
