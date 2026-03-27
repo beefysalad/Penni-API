@@ -160,6 +160,7 @@ model PlannedItem {
   currency         String              @default("PHP")
   startDate        DateTime
   recurrence       RecurrenceFrequency
+  semiMonthlyDays  Int[]
   isActive         Boolean             @default(true)
   nextOccurrenceAt DateTime?
   lastProcessedAt  DateTime?
@@ -244,6 +245,7 @@ enum AccountType {
 enum RecurrenceFrequency {
   WEEKLY
   MONTHLY
+  SEMI_MONTHLY
   QUARTERLY
   YEARLY
 }

@@ -2,7 +2,7 @@ import { AppError } from "../errors/app-error.js";
 import { prisma } from "../lib/prisma.js";
 
 export type TransactionType = "EXPENSE" | "INCOME";
-export type RecurrenceFrequency = "WEEKLY" | "MONTHLY" | "QUARTERLY" | "YEARLY";
+export type RecurrenceFrequency = "WEEKLY" | "MONTHLY" | "SEMI_MONTHLY" | "QUARTERLY" | "YEARLY";
 
 export type CreatePlannedItemInput = {
   userId: string;
@@ -16,6 +16,7 @@ export type CreatePlannedItemInput = {
   currency: string;
   startDate: string;
   recurrence: RecurrenceFrequency;
+  semiMonthlyDays?: number[];
   isActive?: boolean;
   nextOccurrenceAt?: string;
   lastProcessedAt?: string;
@@ -56,6 +57,7 @@ export const plannedItemRepository = {
         currency: input.currency,
         startDate: new Date(input.startDate),
         recurrence: input.recurrence,
+        semiMonthlyDays: input.semiMonthlyDays ?? [],
         isActive: input.isActive ?? true,
         ...(input.clientId ? { clientId: input.clientId } : {}),
         ...(input.accountId ? { accountId: input.accountId } : {}),
@@ -114,6 +116,7 @@ export const plannedItemRepository = {
           ? { startDate: new Date(input.startDate) }
           : {}),
         ...(input.recurrence !== undefined ? { recurrence: input.recurrence } : {}),
+        ...(input.semiMonthlyDays !== undefined ? { semiMonthlyDays: input.semiMonthlyDays } : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
         ...(input.nextOccurrenceAt !== undefined
           ? { nextOccurrenceAt: new Date(input.nextOccurrenceAt) }

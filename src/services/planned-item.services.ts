@@ -43,6 +43,7 @@ export const plannedItemService = {
       currency: input.currency,
       startDate: input.startDate,
       recurrence: input.recurrence,
+      ...(input.semiMonthlyDays ? { semiMonthlyDays: input.semiMonthlyDays } : {}),
       ...(input.clientId ? { clientId: input.clientId } : {}),
       ...(input.accountId ? { accountId: input.accountId } : {}),
       ...(input.categoryId ? { categoryId: input.categoryId } : {}),
@@ -89,6 +90,7 @@ export const plannedItemService = {
       ...(input.currency !== undefined ? { currency: input.currency } : {}),
       ...(input.startDate !== undefined ? { startDate: input.startDate } : {}),
       ...(input.recurrence !== undefined ? { recurrence: input.recurrence } : {}),
+      ...(input.semiMonthlyDays !== undefined ? { semiMonthlyDays: input.semiMonthlyDays } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
       ...(input.nextOccurrenceAt !== undefined
         ? { nextOccurrenceAt: input.nextOccurrenceAt }

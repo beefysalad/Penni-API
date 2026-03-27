@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const transactionTypeSchema = z.enum(["EXPENSE", "INCOME"]);
-const recurrenceFrequencySchema = z.enum(["WEEKLY", "MONTHLY", "QUARTERLY", "YEARLY"]);
+const recurrenceFrequencySchema = z.enum(["WEEKLY", "MONTHLY", "SEMI_MONTHLY", "QUARTERLY", "YEARLY"]);
 const dateTimeSchema = z.string().datetime();
 
 export const plannedItemResponseSchema = z.object({
@@ -17,6 +17,7 @@ export const plannedItemResponseSchema = z.object({
   currency: z.string(),
   startDate: dateTimeSchema,
   recurrence: recurrenceFrequencySchema,
+  semiMonthlyDays: z.array(z.number().int().min(1).max(31)),
   isActive: z.boolean(),
   nextOccurrenceAt: dateTimeSchema.nullable(),
   lastProcessedAt: dateTimeSchema.nullable(),
@@ -26,7 +27,7 @@ export const plannedItemResponseSchema = z.object({
   clientUpdatedAt: dateTimeSchema.nullable(),
 });
 
-export const createPlannedItemBodySchema = z.object({
+const basePlannedItemBodySchema = z.object({
   clientId: z.string().min(1).optional(),
   accountId: z.string().min(1).optional(),
   categoryId: z.string().min(1).optional(),
@@ -37,16 +38,61 @@ export const createPlannedItemBodySchema = z.object({
   currency: z.string().min(3).max(3).default("PHP"),
   startDate: z.string().datetime(),
   recurrence: recurrenceFrequencySchema,
+  semiMonthlyDays: z.array(z.number().int().min(1).max(31)).max(2).optional(),
   isActive: z.boolean().optional(),
   nextOccurrenceAt: z.string().datetime().optional(),
   lastProcessedAt: z.string().datetime().optional(),
   clientUpdatedAt: z.string().datetime().optional(),
 });
 
-export const updatePlannedItemBodySchema = createPlannedItemBodySchema
+function hasValidSemiMonthlyDays(value?: number[]) {
+  if (!value || value.length !== 2) return false;
+  return new Set(value).size === 2;
+}
+
+export const createPlannedItemBodySchema = basePlannedItemBodySchema.superRefine((value, ctx) => {
+  if (value.recurrence === "SEMI_MONTHLY" && !hasValidSemiMonthlyDays(value.semiMonthlyDays)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["semiMonthlyDays"],
+      message: "Semi-monthly items need exactly two different payout days.",
+    });
+  }
+
+  if (value.type === "INCOME" && !value.accountId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["accountId"],
+      message: "Income recurring items need an account.",
+    });
+  }
+});
+
+export const updatePlannedItemBodySchema = basePlannedItemBodySchema
   .partial()
-  .refine((value) => Object.keys(value).length > 0, {
-    message: "At least one field must be provided",
+  .superRefine((value, ctx) => {
+    if (Object.keys(value).length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one field must be provided",
+      });
+    }
+
+    if (value.recurrence === "SEMI_MONTHLY" && !hasValidSemiMonthlyDays(value.semiMonthlyDays)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["semiMonthlyDays"],
+        message: "Semi-monthly items need exactly two different payout days.",
+      });
+    }
+
+    if (value.type === "INCOME" && value.accountId !== undefined && !value.accountId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["accountId"],
+        message: "Income recurring items need an account.",
+      });
+    }
   });
 
 export const plannedItemParamsSchema = z.object({
