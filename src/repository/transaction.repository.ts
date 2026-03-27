@@ -200,22 +200,20 @@ export const transactionRepository = {
           },
         });
 
-        if (!existingAccount) {
-          throw new AppError("Account not found", 404);
+        if (existingAccount) {
+          await tx.account.update({
+            where: {
+              id: existingTransaction.accountId,
+            },
+            data: {
+              balance: getBalanceOperation(
+                existingTransaction.type,
+                existingTransaction.amount.toString(),
+                "reverse",
+              ),
+            },
+          });
         }
-
-        await tx.account.update({
-          where: {
-            id: existingTransaction.accountId,
-          },
-          data: {
-            balance: getBalanceOperation(
-              existingTransaction.type,
-              existingTransaction.amount.toString(),
-              "reverse",
-            ),
-          },
-        });
       }
 
       if (nextAccountId) {
@@ -292,22 +290,20 @@ export const transactionRepository = {
           },
         });
 
-        if (!account) {
-          throw new AppError("Account not found", 404);
+        if (account) {
+          await tx.account.update({
+            where: {
+              id: existingTransaction.accountId,
+            },
+            data: {
+              balance: getBalanceOperation(
+                existingTransaction.type,
+                existingTransaction.amount.toString(),
+                "reverse",
+              ),
+            },
+          });
         }
-
-        await tx.account.update({
-          where: {
-            id: existingTransaction.accountId,
-          },
-          data: {
-            balance: getBalanceOperation(
-              existingTransaction.type,
-              existingTransaction.amount.toString(),
-              "reverse",
-            ),
-          },
-        });
       }
 
       return tx.transaction.update({
