@@ -13,14 +13,28 @@ import { userService } from "./user.services.js";
 export const transactionService = {
   listTransactions: async (clerkUserId: string, filters: ListTransactionsQuery) => {
     const user = await userService.ensureCurrentUser(clerkUserId);
+    const limit = filters.limit ?? 20;
 
-    return transactionRepository.listTransactionsByUserId(user.id, {
+    const repoFilters = {
       ...(filters.type ? { type: filters.type } : {}),
       ...(filters.accountId ? { accountId: filters.accountId } : {}),
       ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
       ...(filters.from ? { from: filters.from } : {}),
       ...(filters.to ? { to: filters.to } : {}),
-    });
+      ...(filters.cursor ? { cursor: filters.cursor } : {}),
+      limit,
+    };
+
+    const [transactions, summary] = await Promise.all([
+      transactionRepository.listTransactionsByUserId(user.id, repoFilters),
+      transactionRepository.getTransactionSummary(user.id, repoFilters),
+    ]);
+
+    const hasMore = transactions.length > limit;
+    const data = hasMore ? transactions.slice(0, limit) : transactions;
+    const nextCursor = hasMore ? data[data.length - 1]!.id : null;
+
+    return { data, nextCursor, hasMore, summary };
   },
 
   createTransaction: async (clerkUserId: string, input: CreateTransactionBody) => {

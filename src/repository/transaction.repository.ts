@@ -28,6 +28,8 @@ export type ListTransactionsInput = {
   categoryId?: string;
   from?: string;
   to?: string;
+  cursor?: string;
+  limit?: number;
 };
 
 function getBalanceOperation(
@@ -44,26 +46,63 @@ function getBalanceOperation(
     : { decrement: amount };
 }
 
+function buildWhereClause(userId: string, filters: ListTransactionsInput) {
+  return {
+    userId,
+    deletedAt: null,
+    ...(filters.type ? { type: filters.type } : {}),
+    ...(filters.accountId ? { accountId: filters.accountId } : {}),
+    ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+    ...(filters.from || filters.to
+      ? {
+          transactionAt: {
+            ...(filters.from ? { gte: new Date(filters.from) } : {}),
+            ...(filters.to ? { lte: new Date(filters.to) } : {}),
+          },
+        }
+      : {}),
+  };
+}
+
 export const transactionRepository = {
   listTransactionsByUserId: async (userId: string, filters: ListTransactionsInput) => {
+    const limit = filters.limit ?? 20;
+    const where = buildWhereClause(userId, filters);
+
     return prisma.transaction.findMany({
-      where: {
-        userId,
-        deletedAt: null,
-        ...(filters.type ? { type: filters.type } : {}),
-        ...(filters.accountId ? { accountId: filters.accountId } : {}),
-        ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
-        ...(filters.from || filters.to
-          ? {
-              transactionAt: {
-                ...(filters.from ? { gte: new Date(filters.from) } : {}),
-                ...(filters.to ? { lte: new Date(filters.to) } : {}),
-              },
-            }
-          : {}),
-      },
+      where,
       orderBy: [{ transactionAt: "desc" }, { createdAt: "desc" }],
+      take: limit + 1,
+      ...(filters.cursor
+        ? {
+            cursor: { id: filters.cursor },
+            skip: 1,
+          }
+        : {}),
     });
+  },
+
+  getTransactionSummary: async (userId: string, filters: ListTransactionsInput) => {
+    const where = buildWhereClause(userId, filters);
+
+    const groups = await prisma.transaction.groupBy({
+      by: ["type"],
+      where,
+      _sum: { amount: true },
+    });
+
+    let totalIncome = "0";
+    let totalExpense = "0";
+
+    for (const group of groups) {
+      if (group.type === "INCOME") {
+        totalIncome = (group._sum.amount ?? 0).toString();
+      } else if (group.type === "EXPENSE") {
+        totalExpense = (group._sum.amount ?? 0).toString();
+      }
+    }
+
+    return { totalIncome, totalExpense };
   },
 
   createTransaction: async (input: CreateTransactionInput) => {

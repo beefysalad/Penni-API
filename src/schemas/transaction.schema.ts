@@ -55,6 +55,18 @@ export const listTransactionsQuerySchema = z.object({
   categoryId: z.string().min(1).optional(),
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
+  cursor: z.string().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export const paginatedTransactionResponseSchema = z.object({
+  data: z.array(transactionResponseSchema),
+  nextCursor: z.string().nullable(),
+  hasMore: z.boolean(),
+  summary: z.object({
+    totalIncome: z.string(),
+    totalExpense: z.string(),
+  }),
 });
 
 export const listTransactionsRouteSchema = {
@@ -62,7 +74,7 @@ export const listTransactionsRouteSchema = {
   security: [{ bearerAuth: [] }],
   querystring: listTransactionsQuerySchema,
   response: {
-    200: z.array(transactionResponseSchema),
+    200: paginatedTransactionResponseSchema,
   },
 };
 

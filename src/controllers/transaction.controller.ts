@@ -36,12 +36,17 @@ export const transactionController = {
       throw new AppError("Unauthorized", 401);
     }
 
-    const transactions = await transactionService.listTransactions(
+    const result = await transactionService.listTransactions(
       request.auth.clerkUserId,
       request.query as ListTransactionsQuery,
     );
 
-    return transactions.map(serializeTransaction);
+    return {
+      data: result.data.map(serializeTransaction),
+      nextCursor: result.nextCursor,
+      hasMore: result.hasMore,
+      summary: result.summary,
+    };
   },
 
   createTransaction: async (request: FastifyRequest, reply: FastifyReply) => {
