@@ -46,6 +46,46 @@ function getBalanceOperation(
     : { decrement: amount };
 }
 
+function getCreditCardBalanceDelta(
+  type: TransactionType,
+  amount: number,
+  direction: "apply" | "reverse",
+) {
+  if (direction === "apply") {
+    return type === "EXPENSE" ? amount : -amount;
+  }
+
+  return type === "EXPENSE" ? -amount : amount;
+}
+
+function buildAccountUpdateData(
+  account: {
+    type: string;
+    balance: { toString(): string } | string | number;
+    creditLimit: { toString(): string } | string | number | null;
+  },
+  type: TransactionType,
+  amount: string,
+  direction: "apply" | "reverse",
+) {
+  if (account.type !== "CREDIT_CARD") {
+    return {
+      balance: getBalanceOperation(type, amount, direction),
+    };
+  }
+
+  const currentBalance = Number(account.balance);
+  const creditLimit = account.creditLimit !== null ? Number(account.creditLimit) : 0;
+  const nextBalance =
+    currentBalance + getCreditCardBalanceDelta(type, Number(amount), direction);
+  const nextAvailableCredit = Math.max(0, creditLimit - nextBalance);
+
+  return {
+    balance: nextBalance.toFixed(2),
+    availableCredit: nextAvailableCredit.toFixed(2),
+  };
+}
+
 function buildWhereClause(userId: string, filters: ListTransactionsInput) {
   return {
     userId,
@@ -124,9 +164,7 @@ export const transactionRepository = {
           where: {
             id: input.accountId,
           },
-          data: {
-            balance: getBalanceOperation(input.type, input.amount, "apply"),
-          },
+          data: buildAccountUpdateData(account, input.type, input.amount, "apply"),
         });
       }
 
@@ -205,13 +243,12 @@ export const transactionRepository = {
             where: {
               id: existingTransaction.accountId,
             },
-            data: {
-              balance: getBalanceOperation(
-                existingTransaction.type,
-                existingTransaction.amount.toString(),
-                "reverse",
-              ),
-            },
+            data: buildAccountUpdateData(
+              existingAccount,
+              existingTransaction.type,
+              existingTransaction.amount.toString(),
+              "reverse",
+            ),
           });
         }
       }
@@ -233,9 +270,7 @@ export const transactionRepository = {
           where: {
             id: nextAccountId,
           },
-          data: {
-            balance: getBalanceOperation(nextType, nextAmount, "apply"),
-          },
+          data: buildAccountUpdateData(nextAccount, nextType, nextAmount, "apply"),
         });
       }
 
@@ -295,13 +330,12 @@ export const transactionRepository = {
             where: {
               id: existingTransaction.accountId,
             },
-            data: {
-              balance: getBalanceOperation(
-                existingTransaction.type,
-                existingTransaction.amount.toString(),
-                "reverse",
-              ),
-            },
+            data: buildAccountUpdateData(
+              account,
+              existingTransaction.type,
+              existingTransaction.amount.toString(),
+              "reverse",
+            ),
           });
         }
       }
