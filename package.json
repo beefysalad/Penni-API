@@ -9,13 +9,14 @@
     "test:watch": "vitest --watch",
     "start": "npx tsc && node dist/index.js",
     "dev": "nodemon --watch src --ext ts --exec tsx src/index.ts",
-    "build": "prisma generate && tsc -p tsconfig.json",
+    "build": "prisma generate && prisma db push && tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:push": "prisma db push"
   },
   "dependencies": {
     "@clerk/backend": "^3.2.3",
