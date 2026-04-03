@@ -27,6 +27,10 @@ export const plannedItemResponseSchema = z.object({
   clientUpdatedAt: dateTimeSchema.nullable(),
 });
 
+export const completePlannedItemBodySchema = z.object({
+  transactionAt: z.string().datetime().optional(),
+});
+
 const basePlannedItemBodySchema = z.object({
   clientId: z.string().min(1).optional(),
   accountId: z.string().min(1).optional(),
@@ -143,7 +147,18 @@ export const deletePlannedItemRouteSchema = {
   },
 };
 
+export const completePlannedItemRouteSchema = {
+  tags: ["PlannedItem"],
+  security: [{ bearerAuth: [] }],
+  params: plannedItemParamsSchema,
+  body: completePlannedItemBodySchema.optional(),
+  response: {
+    200: plannedItemResponseSchema,
+  },
+};
+
 export type CreatePlannedItemBody = z.infer<typeof createPlannedItemBodySchema>;
 export type UpdatePlannedItemBody = z.infer<typeof updatePlannedItemBodySchema>;
+export type CompletePlannedItemBody = z.infer<typeof completePlannedItemBodySchema>;
 export type PlannedItemParams = z.infer<typeof plannedItemParamsSchema>;
 export type ListPlannedItemsQuery = z.infer<typeof listPlannedItemsQuerySchema>;

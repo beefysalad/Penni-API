@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { AppError } from "../errors/app-error.js";
 import { AppHelper } from "../helpers/helper.js";
 import type {
+  CompletePlannedItemBody,
   CreatePlannedItemBody,
   ListPlannedItemsQuery,
   PlannedItemParams,
@@ -71,6 +72,23 @@ export const plannedItemController = {
     const body = request.body as UpdatePlannedItemBody;
 
     const plannedItem = await plannedItemService.updatePlannedItem(
+      request.auth.clerkUserId,
+      params.id,
+      body,
+    );
+
+    return serializePlannedItem(plannedItem);
+  },
+
+  completePlannedItem: async (request: FastifyRequest) => {
+    if (!request.auth?.clerkUserId) {
+      throw new AppError("Unauthorized", 401);
+    }
+
+    const params = request.params as PlannedItemParams;
+    const body = (request.body ?? {}) as CompletePlannedItemBody;
+
+    const plannedItem = await plannedItemService.completePlannedItem(
       request.auth.clerkUserId,
       params.id,
       body,

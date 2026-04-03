@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { plannedItemController } from "../controllers/planned-item.controller.js";
 import {
+  completePlannedItemRouteSchema,
   createPlannedItemRouteSchema,
   deletePlannedItemRouteSchema,
   listPlannedItemsRouteSchema,
@@ -27,6 +28,15 @@ export async function plannedItemRoutes(server: FastifyInstance) {
       preHandler: app.authenticate,
     },
     plannedItemController.createPlannedItem,
+  );
+
+  app.patch(
+    "/planned-items/:id/complete",
+    {
+      schema: completePlannedItemRouteSchema,
+      preHandler: app.authenticate,
+    },
+    plannedItemController.completePlannedItem,
   );
 
   app.patch(

@@ -2,7 +2,9 @@ import { AppError } from "../errors/app-error.js";
 import { accountRepository } from "../repository/account.repository.js";
 import { categoryRepository } from "../repository/category.repository.js";
 import { plannedItemRepository } from "../repository/planned-item.repository.js";
+import { transactionRepository } from "../repository/transaction.repository.js";
 import type {
+  CompletePlannedItemBody,
   CreatePlannedItemBody,
   ListPlannedItemsQuery,
   UpdatePlannedItemBody,
@@ -98,12 +100,13 @@ function normalizeNextOccurrence(item: {
 
   const startDate = new Date(item.startDate);
   const nextOccurrenceAt = item.nextOccurrenceAt ? new Date(item.nextOccurrenceAt) : null;
-  const days = item.semiMonthlyDays ?? [];
-  const referenceDate = nextOccurrenceAt && nextOccurrenceAt > startOfDay(new Date())
-    ? nextOccurrenceAt
-    : new Date();
 
-  return getNextOccurrenceForRecurrence(item.recurrence, startDate, days, referenceDate);
+  if (nextOccurrenceAt) {
+    return nextOccurrenceAt;
+  }
+
+  const days = item.semiMonthlyDays ?? [];
+  return getNextOccurrenceForRecurrence(item.recurrence, startDate, days, startDate);
 }
 
 export const plannedItemService = {
@@ -241,6 +244,57 @@ export const plannedItemService = {
       ...(input.clientUpdatedAt !== undefined
         ? { clientUpdatedAt: input.clientUpdatedAt }
         : {}),
+    });
+  },
+
+  completePlannedItem: async (
+    clerkUserId: string,
+    plannedItemId: string,
+    input: CompletePlannedItemBody,
+  ) => {
+    const user = await userService.ensureCurrentUser(clerkUserId);
+    const plannedItem = await plannedItemRepository.getPlannedItemById(user.id, plannedItemId);
+
+    if (!plannedItem.isActive) {
+      throw new AppError("Planned item is inactive", 422);
+    }
+
+    const transactionAt = input.transactionAt
+      ? new Date(input.transactionAt)
+      : plannedItem.nextOccurrenceAt ?? new Date();
+
+    if (plannedItem.accountId) {
+      await accountRepository.getAccountById(user.id, plannedItem.accountId);
+    }
+
+    if (plannedItem.categoryId) {
+      await categoryRepository.getCategoryById(user.id, plannedItem.categoryId);
+    }
+
+    await transactionRepository.createTransaction({
+      userId: user.id,
+      type: plannedItem.type,
+      source: "RECURRING",
+      title: plannedItem.title,
+      amount: plannedItem.amount.toString(),
+      currency: plannedItem.currency,
+      transactionAt: transactionAt.toISOString(),
+      ...(plannedItem.accountId ? { accountId: plannedItem.accountId } : {}),
+      ...(plannedItem.categoryId ? { categoryId: plannedItem.categoryId } : {}),
+      plannedItemId: plannedItem.id,
+      ...(plannedItem.notes ? { notes: plannedItem.notes } : {}),
+    });
+
+    const nextOccurrenceAt = getNextOccurrenceForRecurrence(
+      plannedItem.recurrence,
+      plannedItem.startDate,
+      plannedItem.semiMonthlyDays,
+      new Date(startOfDay(transactionAt).getTime() + 24 * 60 * 60 * 1000),
+    );
+
+    return plannedItemRepository.updatePlannedItem(user.id, plannedItem.id, {
+      nextOccurrenceAt: nextOccurrenceAt.toISOString(),
+      lastProcessedAt: transactionAt.toISOString(),
     });
   },
 
