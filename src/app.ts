@@ -43,3 +43,7 @@ export function buildServer() {
 
   return server;
 }
+
+const app = buildServer();
+
+export default app;
