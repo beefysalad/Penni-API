@@ -1,4 +1,4 @@
-import { buildServer } from "./app.js";
+import { buildServer } from "./bootstrap.js";
 import { env } from "./config/env.js";
 
 const server = buildServer();
