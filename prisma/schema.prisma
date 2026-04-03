@@ -232,6 +232,7 @@ enum TransactionSource {
   MANUAL
   RECURRING
   IMPORTED
+  TRANSFER
 }
 
 enum AccountType {

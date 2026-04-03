@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const transactionTypeSchema = z.enum(["EXPENSE", "INCOME"]);
-const transactionSourceSchema = z.enum(["MANUAL", "RECURRING", "IMPORTED"]);
+const transactionSourceSchema = z.enum(["MANUAL", "RECURRING", "IMPORTED", "TRANSFER"]);
 const dateTimeSchema = z.string().datetime();
 
 export const transactionResponseSchema = z.object({
@@ -22,6 +22,11 @@ export const transactionResponseSchema = z.object({
   updatedAt: dateTimeSchema,
   deletedAt: dateTimeSchema.nullable(),
   clientUpdatedAt: dateTimeSchema.nullable(),
+});
+
+export const transferResponseSchema = z.object({
+  outgoingTransaction: transactionResponseSchema,
+  incomingTransaction: transactionResponseSchema,
 });
 
 export const createTransactionBodySchema = z.object({
@@ -47,6 +52,16 @@ export const updateTransactionBodySchema = createTransactionBodySchema
 
 export const transactionParamsSchema = z.object({
   id: z.string().min(1),
+});
+
+export const createTransferBodySchema = z.object({
+  fromAccountId: z.string().min(1),
+  toAccountId: z.string().min(1),
+  title: z.string().min(1).max(160).optional(),
+  notes: z.string().max(2000).optional(),
+  amount: z.string().regex(/^\d+(\.\d{1,2})?$/),
+  transactionAt: z.string().datetime(),
+  clientUpdatedAt: z.string().datetime().optional(),
 });
 
 export const listTransactionsQuerySchema = z.object({
@@ -87,6 +102,15 @@ export const createTransactionRouteSchema = {
   },
 };
 
+export const createTransferRouteSchema = {
+  tags: ["Transaction"],
+  security: [{ bearerAuth: [] }],
+  body: createTransferBodySchema,
+  response: {
+    201: transferResponseSchema,
+  },
+};
+
 export const updateTransactionRouteSchema = {
   tags: ["Transaction"],
   security: [{ bearerAuth: [] }],
@@ -107,6 +131,7 @@ export const deleteTransactionRouteSchema = {
 };
 
 export type CreateTransactionBody = z.infer<typeof createTransactionBodySchema>;
+export type CreateTransferBody = z.infer<typeof createTransferBodySchema>;
 export type UpdateTransactionBody = z.infer<typeof updateTransactionBodySchema>;
 export type TransactionParams = z.infer<typeof transactionParamsSchema>;
 export type ListTransactionsQuery = z.infer<typeof listTransactionsQuerySchema>;

@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 const verifyClerkSessionToken = vi.fn();
 const listAccounts = vi.fn();
 const createAccount = vi.fn();
+const deleteAccount = vi.fn();
 
 vi.mock("../src/lib/clerk.js", () => ({
   ClerkLib: {
@@ -17,7 +18,7 @@ vi.mock("../src/services/account.services.js", () => ({
     listAccounts,
     createAccount,
     updateAccount: vi.fn(),
-    deleteAccount: vi.fn(),
+    deleteAccount,
   },
 }));
 
@@ -80,6 +81,9 @@ describe("accounts", () => {
         type: "E_WALLET",
         currency: "PHP",
         balance: "6420.00",
+        creditLimit: null,
+        availableCredit: null,
+        dueDayOfMonth: null,
         institutionName: null,
         isArchived: false,
         lastSyncedAt: null,
@@ -140,6 +144,65 @@ describe("accounts", () => {
       currency: "PHP",
       balance: "1000.00",
       institutionName: "BPI",
+    });
+  });
+
+  it("deletes an account", async () => {
+    verifyClerkSessionToken.mockResolvedValue({
+      sub: "user_clerk_123",
+      sid: "sess_123",
+    });
+
+    deleteAccount.mockResolvedValue({
+      id: "acc_2",
+      clientId: "client_acc_2",
+      userId: "user_1",
+      name: "BPI Savings",
+      type: "BANK_ACCOUNT",
+      currency: "PHP",
+      balance: {
+        toString: () => "1000.00",
+      },
+      creditLimit: null,
+      availableCredit: null,
+      dueDayOfMonth: null,
+      institutionName: "BPI",
+      isArchived: true,
+      lastSyncedAt: null,
+      createdAt: new Date("2026-03-27T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-03T00:00:00.000Z"),
+      deletedAt: new Date("2026-04-03T00:00:00.000Z"),
+      clientUpdatedAt: null,
+    });
+
+    const response = await app.inject({
+      method: "DELETE",
+      url: "/api/accounts/acc_2",
+      headers: {
+        authorization: "Bearer valid-token",
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(deleteAccount).toHaveBeenCalledWith("user_clerk_123", "acc_2");
+    expect(response.json()).toEqual({
+      id: "acc_2",
+      clientId: "client_acc_2",
+      userId: "user_1",
+      name: "BPI Savings",
+      type: "BANK_ACCOUNT",
+      currency: "PHP",
+      balance: "1000.00",
+      creditLimit: null,
+      availableCredit: null,
+      dueDayOfMonth: null,
+      institutionName: "BPI",
+      isArchived: true,
+      lastSyncedAt: null,
+      createdAt: "2026-03-27T00:00:00.000Z",
+      updatedAt: "2026-04-03T00:00:00.000Z",
+      deletedAt: "2026-04-03T00:00:00.000Z",
+      clientUpdatedAt: null,
     });
   });
 });

@@ -30,11 +30,11 @@ services:
       NODE_ENV: production
       APP_NAME: Penni API
       HOST: 0.0.0.0
-      PORT: 3000
-      CORS_ORIGIN: http://localhost:8081,http://localhost:3000
+      PORT: 3001
+      CORS_ORIGIN: http://localhost:8081,http://localhost:3001
       DATABASE_URL: postgresql://penni:penni@postgres:5432/penni?schema=public
     ports:
-      - "3000:3000"
+      - "3001:3001"
 
 volumes:
   postgres_data:

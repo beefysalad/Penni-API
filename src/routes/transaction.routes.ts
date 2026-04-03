@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { transactionController } from "../controllers/transaction.controller.js";
 import {
+  createTransferRouteSchema,
   createTransactionRouteSchema,
   deleteTransactionRouteSchema,
   listTransactionsRouteSchema,
@@ -18,6 +19,15 @@ export async function transactionRoutes(server: FastifyInstance) {
       preHandler: app.authenticate,
     },
     transactionController.listTransactions,
+  );
+
+  app.post(
+    "/transactions/transfers",
+    {
+      schema: createTransferRouteSchema,
+      preHandler: app.authenticate,
+    },
+    transactionController.createTransfer,
   );
 
   app.post(

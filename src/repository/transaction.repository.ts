@@ -2,7 +2,7 @@ import { AppError } from "../errors/app-error.js";
 import { prisma } from "../lib/prisma.js";
 
 export type TransactionType = "EXPENSE" | "INCOME";
-export type TransactionSource = "MANUAL" | "RECURRING" | "IMPORTED";
+export type TransactionSource = "MANUAL" | "RECURRING" | "IMPORTED" | "TRANSFER";
 
 export type CreateTransactionInput = {
   userId: string;
@@ -21,6 +21,17 @@ export type CreateTransactionInput = {
 };
 
 export type UpdateTransactionInput = Partial<Omit<CreateTransactionInput, "userId">>;
+
+export type CreateTransferInput = {
+  userId: string;
+  fromAccountId: string;
+  toAccountId: string;
+  title?: string;
+  notes?: string;
+  amount: string;
+  transactionAt: string;
+  clientUpdatedAt?: string;
+};
 
 export type ListTransactionsInput = {
   type?: TransactionType;
@@ -127,7 +138,12 @@ export const transactionRepository = {
 
     const groups = await prisma.transaction.groupBy({
       by: ["type"],
-      where,
+      where: {
+        ...where,
+        source: {
+          not: "TRANSFER",
+        },
+      },
       _sum: { amount: true },
     });
 
@@ -187,6 +203,84 @@ export const transactionRepository = {
             : {}),
         },
       });
+    });
+  },
+
+  createTransfer: async (input: CreateTransferInput) => {
+    return prisma.$transaction(async (tx) => {
+      const [fromAccount, toAccount] = await Promise.all([
+        tx.account.findFirst({
+          where: {
+            id: input.fromAccountId,
+            userId: input.userId,
+            deletedAt: null,
+          },
+        }),
+        tx.account.findFirst({
+          where: {
+            id: input.toAccountId,
+            userId: input.userId,
+            deletedAt: null,
+          },
+        }),
+      ]);
+
+      if (!fromAccount || !toAccount) {
+        throw new AppError("Account not found", 404);
+      }
+
+      await tx.account.update({
+        where: {
+          id: input.fromAccountId,
+        },
+        data: buildAccountUpdateData(fromAccount, "EXPENSE", input.amount, "apply"),
+      });
+
+      await tx.account.update({
+        where: {
+          id: input.toAccountId,
+        },
+        data: buildAccountUpdateData(toAccount, "INCOME", input.amount, "apply"),
+      });
+
+      const transactionAt = new Date(input.transactionAt);
+      const clientUpdatedAt = input.clientUpdatedAt ? new Date(input.clientUpdatedAt) : undefined;
+      const baseTitle = input.title?.trim();
+
+      const outgoingTransaction = await tx.transaction.create({
+        data: {
+          userId: input.userId,
+          accountId: input.fromAccountId,
+          type: "EXPENSE",
+          source: "TRANSFER",
+          title: baseTitle || `Transfer to ${toAccount.name}`,
+          amount: input.amount,
+          currency: fromAccount.currency,
+          transactionAt,
+          ...(input.notes ? { notes: input.notes } : {}),
+          ...(clientUpdatedAt ? { clientUpdatedAt } : {}),
+        },
+      });
+
+      const incomingTransaction = await tx.transaction.create({
+        data: {
+          userId: input.userId,
+          accountId: input.toAccountId,
+          type: "INCOME",
+          source: "TRANSFER",
+          title: baseTitle || `Transfer from ${fromAccount.name}`,
+          amount: input.amount,
+          currency: toAccount.currency,
+          transactionAt,
+          ...(input.notes ? { notes: input.notes } : {}),
+          ...(clientUpdatedAt ? { clientUpdatedAt } : {}),
+        },
+      });
+
+      return {
+        outgoingTransaction,
+        incomingTransaction,
+      };
     });
   },
 

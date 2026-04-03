@@ -1,20 +1,48 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+import type { z } from "zod";
 import { AppError } from "../errors/app-error.js";
 import { AppHelper } from "../helpers/helper.js";
 import type {
+  CreateTransferBody,
   CreateTransactionBody,
   ListTransactionsQuery,
   TransactionParams,
   UpdateTransactionBody,
 } from "../schemas/transaction.schema.js";
+import { transactionResponseSchema } from "../schemas/transaction.schema.js";
 import { transactionService } from "../services/transaction.services.js";
 
+type SerializedTransaction = z.infer<typeof transactionResponseSchema>;
+
 function serializeTransaction(
-  transaction: Awaited<ReturnType<typeof transactionService.createTransaction>>,
-) {
+  transaction: {
+    id: string;
+    userId: string;
+    amount: { toString(): string };
+    accountId: string | null;
+    categoryId: string | null;
+    plannedItemId: string | null;
+    type: "EXPENSE" | "INCOME";
+    source: "MANUAL" | "RECURRING" | "IMPORTED" | "TRANSFER";
+    title: string;
+    notes: string | null;
+    currency: string;
+    clientId: string | null;
+    transactionAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt: Date | null;
+    clientUpdatedAt: Date | null;
+  },
+) : SerializedTransaction {
   return {
-    ...transaction,
+    id: transaction.id,
+    userId: transaction.userId,
+    type: transaction.type,
+    source: transaction.source,
+    title: transaction.title,
     amount: transaction.amount.toString(),
+    currency: transaction.currency,
     accountId: transaction.accountId ?? null,
     categoryId: transaction.categoryId ?? null,
     plannedItemId: transaction.plannedItemId ?? null,
@@ -60,6 +88,22 @@ export const transactionController = {
     );
 
     return reply.status(201).send(serializeTransaction(transaction));
+  },
+
+  createTransfer: async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!request.auth?.clerkUserId) {
+      throw new AppError("Unauthorized", 401);
+    }
+
+    const transfer = await transactionService.createTransfer(
+      request.auth.clerkUserId,
+      request.body as CreateTransferBody,
+    );
+
+    return reply.status(201).send({
+      outgoingTransaction: serializeTransaction(transfer.outgoingTransaction),
+      incomingTransaction: serializeTransaction(transfer.incomingTransaction),
+    });
   },
 
   updateTransaction: async (request: FastifyRequest) => {

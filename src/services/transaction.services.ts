@@ -4,6 +4,7 @@ import { categoryRepository } from "../repository/category.repository.js";
 import { plannedItemRepository } from "../repository/planned-item.repository.js";
 import { transactionRepository } from "../repository/transaction.repository.js";
 import type {
+  CreateTransferBody,
   CreateTransactionBody,
   ListTransactionsQuery,
   UpdateTransactionBody,
@@ -11,7 +12,10 @@ import type {
 import { userService } from "./user.services.js";
 
 export const transactionService = {
-  listTransactions: async (clerkUserId: string, filters: ListTransactionsQuery) => {
+  listTransactions: async (
+    clerkUserId: string,
+    filters: ListTransactionsQuery,
+  ) => {
     const user = await userService.ensureCurrentUser(clerkUserId);
     const limit = filters.limit ?? 20;
 
@@ -37,7 +41,10 @@ export const transactionService = {
     return { data, nextCursor, hasMore, summary };
   },
 
-  createTransaction: async (clerkUserId: string, input: CreateTransactionBody) => {
+  createTransaction: async (
+    clerkUserId: string,
+    input: CreateTransactionBody,
+  ) => {
     const user = await userService.ensureCurrentUser(clerkUserId);
 
     if (input.accountId) {
@@ -45,14 +52,23 @@ export const transactionService = {
     }
 
     if (input.categoryId) {
-      const category = await categoryRepository.getCategoryById(user.id, input.categoryId);
+      const category = await categoryRepository.getCategoryById(
+        user.id,
+        input.categoryId,
+      );
       if (category.type !== input.type) {
-        throw new AppError("Category type does not match transaction type", 422);
+        throw new AppError(
+          "Category type does not match transaction type",
+          422,
+        );
       }
     }
 
     if (input.plannedItemId) {
-      await plannedItemRepository.getPlannedItemById(user.id, input.plannedItemId);
+      await plannedItemRepository.getPlannedItemById(
+        user.id,
+        input.plannedItemId,
+      );
     }
 
     return transactionRepository.createTransaction({
@@ -68,7 +84,46 @@ export const transactionService = {
       ...(input.categoryId ? { categoryId: input.categoryId } : {}),
       ...(input.plannedItemId ? { plannedItemId: input.plannedItemId } : {}),
       ...(input.notes ? { notes: input.notes } : {}),
-      ...(input.clientUpdatedAt ? { clientUpdatedAt: input.clientUpdatedAt } : {}),
+      ...(input.clientUpdatedAt
+        ? { clientUpdatedAt: input.clientUpdatedAt }
+        : {}),
+    });
+  },
+
+  createTransfer: async (clerkUserId: string, input: CreateTransferBody) => {
+    const user = await userService.ensureCurrentUser(clerkUserId);
+
+    if (input.fromAccountId === input.toAccountId) {
+      throw new AppError("Transfer accounts must be different", 422);
+    }
+
+    const [fromAccount, toAccount] = await Promise.all([
+      accountRepository.getAccountById(user.id, input.fromAccountId),
+      accountRepository.getAccountById(user.id, input.toAccountId),
+    ]);
+
+    if (fromAccount.type === "CREDIT_CARD") {
+      throw new AppError("Transfers from credit cards are not supported yet", 422);
+    }
+
+    if (fromAccount.currency !== toAccount.currency) {
+      throw new AppError(
+        "Transfer POC currently supports same-currency accounts only",
+        422,
+      );
+    }
+
+    return transactionRepository.createTransfer({
+      userId: user.id,
+      fromAccountId: input.fromAccountId,
+      toAccountId: input.toAccountId,
+      amount: input.amount,
+      transactionAt: input.transactionAt,
+      ...(input.title ? { title: input.title } : {}),
+      ...(input.notes ? { notes: input.notes } : {}),
+      ...(input.clientUpdatedAt
+        ? { clientUpdatedAt: input.clientUpdatedAt }
+        : {}),
     });
   },
 
@@ -78,44 +133,67 @@ export const transactionService = {
     input: UpdateTransactionBody,
   ) => {
     const user = await userService.ensureCurrentUser(clerkUserId);
-    const existingTransaction = await transactionRepository.getTransactionById(user.id, transactionId);
+    const existingTransaction = await transactionRepository.getTransactionById(
+      user.id,
+      transactionId,
+    );
 
     const nextType = input.type ?? existingTransaction.type;
-    const nextAccountId = input.accountId !== undefined ? input.accountId : existingTransaction.accountId ?? undefined;
+    const nextAccountId =
+      input.accountId !== undefined
+        ? input.accountId
+        : (existingTransaction.accountId ?? undefined);
     const nextCategoryId =
-      input.categoryId !== undefined ? input.categoryId : existingTransaction.categoryId ?? undefined;
+      input.categoryId !== undefined
+        ? input.categoryId
+        : (existingTransaction.categoryId ?? undefined);
     const nextPlannedItemId =
       input.plannedItemId !== undefined
         ? input.plannedItemId
-        : existingTransaction.plannedItemId ?? undefined;
+        : (existingTransaction.plannedItemId ?? undefined);
 
     if (nextAccountId) {
       await accountRepository.getAccountById(user.id, nextAccountId);
     }
 
     if (nextCategoryId) {
-      const category = await categoryRepository.getCategoryById(user.id, nextCategoryId);
+      const category = await categoryRepository.getCategoryById(
+        user.id,
+        nextCategoryId,
+      );
       if (category.type !== nextType) {
-        throw new AppError("Category type does not match transaction type", 422);
+        throw new AppError(
+          "Category type does not match transaction type",
+          422,
+        );
       }
     }
 
     if (nextPlannedItemId) {
-      await plannedItemRepository.getPlannedItemById(user.id, nextPlannedItemId);
+      await plannedItemRepository.getPlannedItemById(
+        user.id,
+        nextPlannedItemId,
+      );
     }
 
     return transactionRepository.updateTransaction(user.id, transactionId, {
       ...(input.clientId !== undefined ? { clientId: input.clientId } : {}),
       ...(input.accountId !== undefined ? { accountId: input.accountId } : {}),
-      ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
-      ...(input.plannedItemId !== undefined ? { plannedItemId: input.plannedItemId } : {}),
+      ...(input.categoryId !== undefined
+        ? { categoryId: input.categoryId }
+        : {}),
+      ...(input.plannedItemId !== undefined
+        ? { plannedItemId: input.plannedItemId }
+        : {}),
       ...(input.type !== undefined ? { type: input.type } : {}),
       ...(input.source !== undefined ? { source: input.source } : {}),
       ...(input.title !== undefined ? { title: input.title } : {}),
       ...(input.notes !== undefined ? { notes: input.notes } : {}),
       ...(input.amount !== undefined ? { amount: input.amount } : {}),
       ...(input.currency !== undefined ? { currency: input.currency } : {}),
-      ...(input.transactionAt !== undefined ? { transactionAt: input.transactionAt } : {}),
+      ...(input.transactionAt !== undefined
+        ? { transactionAt: input.transactionAt }
+        : {}),
       ...(input.clientUpdatedAt !== undefined
         ? { clientUpdatedAt: input.clientUpdatedAt }
         : {}),
