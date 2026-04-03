@@ -23,10 +23,10 @@ vi.mock("../src/services/account.services.js", () => ({
 }));
 
 describe("accounts", () => {
-  let app: Awaited<ReturnType<typeof import("../src/bootstrap.js")["buildServer"]>>;
+  let app: Awaited<ReturnType<typeof import("../src/index.js")["buildServer"]>>;
 
   beforeAll(async () => {
-    const { buildServer } = await import("../src/bootstrap.js");
+    const { buildServer } = await import("../src/index.js");
     app = buildServer();
     await app.ready();
   });

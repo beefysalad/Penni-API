@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { buildServer } from "../src/bootstrap.js";
+import { buildServer } from "../src/index.js";
 
 describe("health", () => {
   const app = buildServer();

@@ -18,10 +18,10 @@ vi.mock("../src/services/user.services.js", () => ({
 }));
 
 describe("me", () => {
-  let app: Awaited<ReturnType<typeof import("../src/bootstrap.js")["buildServer"]>>;
+  let app: Awaited<ReturnType<typeof import("../src/index.js")["buildServer"]>>;
 
   beforeAll(async () => {
-    const { buildServer } = await import("../src/bootstrap.js");
+    const { buildServer } = await import("../src/index.js");
     app = buildServer();
     await app.ready();
   });
