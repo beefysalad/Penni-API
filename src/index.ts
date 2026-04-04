@@ -77,6 +77,6 @@ process.on("SIGTERM", () => {
   void shutdown("SIGTERM");
 });
 
-if (process.env.VERCEL !== "1" && env.nodeEnv !== "test") {
+if (env.nodeEnv !== "test") {
   void start();
 }
