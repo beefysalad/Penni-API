@@ -102,4 +102,33 @@ describe("transactionService.createTransaction", () => {
 
     expect(createTransaction).not.toHaveBeenCalled();
   });
+
+  it("rejects asset account expenses above available balance", async () => {
+    getAccountById.mockResolvedValue({
+      id: "acc_cash",
+      userId: "user_1",
+      type: "CASH",
+      currency: "PHP",
+      balance: "250.00",
+    });
+
+    const { transactionService } = await import("../src/services/transaction.services.js");
+
+    await expect(
+      transactionService.createTransaction("clerk_123", {
+        accountId: "acc_cash",
+        type: "EXPENSE",
+        source: "MANUAL",
+        title: "Too big",
+        amount: "2500.00",
+        currency: "PHP",
+        transactionAt: "2026-04-05T02:30:00.000Z",
+      }),
+    ).rejects.toMatchObject({
+      message: "Amount exceeds the account's available balance",
+      statusCode: 422,
+    });
+
+    expect(createTransaction).not.toHaveBeenCalled();
+  });
 });

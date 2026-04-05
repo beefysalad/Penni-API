@@ -30,6 +30,25 @@ function validateCreditCardExpenseLimit(
   }
 }
 
+function validateAvailableBalance(
+  account: {
+    type: string;
+    balance: { toString(): string } | string | number;
+  },
+  type: "EXPENSE" | "INCOME",
+  amount: string,
+) {
+  if (account.type === "CREDIT_CARD" || type !== "EXPENSE") {
+    return;
+  }
+
+  const balance = Number(account.balance);
+
+  if (Number(amount) > balance) {
+    throw new AppError("Amount exceeds the account's available balance", 422);
+  }
+}
+
 export const transactionService = {
   listTransactions: async (
     clerkUserId: string,
@@ -72,6 +91,7 @@ export const transactionService = {
     if (input.accountId) {
       account = await accountRepository.getAccountById(user.id, input.accountId);
       validateCreditCardExpenseLimit(account, input.type, input.amount);
+      validateAvailableBalance(account, input.type, input.amount);
     }
 
     if (input.categoryId) {
@@ -128,6 +148,8 @@ export const transactionService = {
     if (fromAccount.type === "CREDIT_CARD") {
       throw new AppError("Transfers from credit cards are not supported yet", 422);
     }
+
+    validateAvailableBalance(fromAccount, "EXPENSE", input.amount);
 
     if (fromAccount.currency !== toAccount.currency) {
       throw new AppError(
@@ -190,6 +212,19 @@ export const transactionService = {
 
       if (nextAccount.type === "CREDIT_CARD" && nextType === "EXPENSE" && nextAmount > effectiveAvailableCredit) {
         throw new AppError("Charge exceeds the card's available credit", 422);
+      }
+
+      const isSameAssetAccount =
+        nextAccount.type !== "CREDIT_CARD" &&
+        existingTransaction.accountId === nextAccountId &&
+        existingTransaction.type === "EXPENSE";
+      const effectiveBalance =
+        isSameAssetAccount
+          ? Number(nextAccount.balance) + existingAmount
+          : Number(nextAccount.balance);
+
+      if (nextAccount.type !== "CREDIT_CARD" && nextType === "EXPENSE" && nextAmount > effectiveBalance) {
+        throw new AppError("Amount exceeds the account's available balance", 422);
       }
     }
 
