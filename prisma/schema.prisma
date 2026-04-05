@@ -28,6 +28,7 @@ model User {
   updatedAt       DateTime        @updatedAt
   deletedAt       DateTime?
   clientUpdatedAt DateTime?
+  feedBacks       FeedBack[]
 }
 
 model UserPreference {
@@ -221,6 +222,33 @@ model SyncOperation {
   @@index([userId])
   @@index([status])
   @@index([entityType, status])
+}
+
+model FeedBack {
+  id           String       @id @default(cuid())
+  userId       String
+  feedbackType FeedbackType
+  message      String
+  mood         Mood
+  email        String?
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+enum FeedbackType {
+  BUG_REPORT
+  GENERAL_FEEDBACK
+  FEATURE_REQUEST
+  SHOW_SOME_LOVE
+}
+
+enum Mood {
+  FRUSTRATED
+  UNHAPPY
+  NEUTRAL
+  HAPPY
+  LOVING_IT
 }
 
 enum TransactionType {
