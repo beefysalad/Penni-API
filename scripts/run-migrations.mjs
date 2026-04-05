@@ -1,10 +1,20 @@
 import { spawnSync } from "node:child_process";
 
 function run(command, args) {
-  return spawnSync(command, args, {
-    stdio: "inherit",
+  const result = spawnSync(command, args, {
+    stdio: "pipe",
     encoding: "utf8",
   });
+
+  if (result.stdout) {
+    process.stdout.write(result.stdout);
+  }
+
+  if (result.stderr) {
+    process.stderr.write(result.stderr);
+  }
+
+  return result;
 }
 
 const migrateResult = run("npx", ["prisma", "migrate", "deploy"]);
