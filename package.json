@@ -7,7 +7,7 @@
   "scripts": {
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "start": "prisma migrate deploy && node dist/index.js",
+    "start": "node scripts/run-migrations.mjs && node dist/index.js",
     "dev": "nodemon --watch src --ext ts --exec tsx src/index.ts",
     "build": "prisma generate && tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
