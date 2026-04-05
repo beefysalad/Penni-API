@@ -11,6 +11,25 @@ import type {
 } from "../schemas/transaction.schema.js";
 import { userService } from "./user.services.js";
 
+function validateCreditCardExpenseLimit(
+  account: {
+    type: string;
+    availableCredit: { toString(): string } | string | number | null;
+  },
+  type: "EXPENSE" | "INCOME",
+  amount: string,
+) {
+  if (account.type !== "CREDIT_CARD" || type !== "EXPENSE") {
+    return;
+  }
+
+  const availableCredit = Number(account.availableCredit ?? 0);
+
+  if (Number(amount) > availableCredit) {
+    throw new AppError("Charge exceeds the card's available credit", 422);
+  }
+}
+
 export const transactionService = {
   listTransactions: async (
     clerkUserId: string,
@@ -46,9 +65,13 @@ export const transactionService = {
     input: CreateTransactionBody,
   ) => {
     const user = await userService.ensureCurrentUser(clerkUserId);
+    let account:
+      | Awaited<ReturnType<typeof accountRepository.getAccountById>>
+      | null = null;
 
     if (input.accountId) {
-      await accountRepository.getAccountById(user.id, input.accountId);
+      account = await accountRepository.getAccountById(user.id, input.accountId);
+      validateCreditCardExpenseLimit(account, input.type, input.amount);
     }
 
     if (input.categoryId) {
@@ -153,7 +176,21 @@ export const transactionService = {
         : (existingTransaction.plannedItemId ?? undefined);
 
     if (nextAccountId) {
-      await accountRepository.getAccountById(user.id, nextAccountId);
+      const nextAccount = await accountRepository.getAccountById(user.id, nextAccountId);
+      const existingAmount = Number(existingTransaction.amount);
+      const nextAmount = Number(input.amount ?? existingTransaction.amount);
+      const availableCredit = Number(nextAccount.availableCredit ?? 0);
+      const isSameCreditCard =
+        nextAccount.type === "CREDIT_CARD" &&
+        existingTransaction.accountId === nextAccountId;
+      const effectiveAvailableCredit =
+        isSameCreditCard && existingTransaction.type === "EXPENSE"
+          ? availableCredit + existingAmount
+          : availableCredit;
+
+      if (nextAccount.type === "CREDIT_CARD" && nextType === "EXPENSE" && nextAmount > effectiveAvailableCredit) {
+        throw new AppError("Charge exceeds the card's available credit", 422);
+      }
     }
 
     if (nextCategoryId) {

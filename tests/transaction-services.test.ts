@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const ensureCurrentUser = vi.fn();
 const getAccountById = vi.fn();
 const createTransfer = vi.fn();
+const createTransaction = vi.fn();
 
 vi.mock("../src/services/user.services.js", () => ({
   userService: {
@@ -19,9 +20,9 @@ vi.mock("../src/repository/account.repository.js", () => ({
 vi.mock("../src/repository/transaction.repository.js", () => ({
   transactionRepository: {
     createTransfer,
+    createTransaction,
     listTransactionsByUserId: vi.fn(),
     getTransactionSummary: vi.fn(),
-    createTransaction: vi.fn(),
     getTransactionById: vi.fn(),
     updateTransaction: vi.fn(),
     softDeleteTransaction: vi.fn(),
@@ -64,5 +65,41 @@ describe("transactionService.createTransfer", () => {
     });
 
     expect(createTransfer).not.toHaveBeenCalled();
+  });
+});
+
+describe("transactionService.createTransaction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    ensureCurrentUser.mockResolvedValue({ id: "user_1" });
+  });
+
+  it("rejects credit card charges above available credit", async () => {
+    getAccountById.mockResolvedValue({
+      id: "acc_cc",
+      userId: "user_1",
+      type: "CREDIT_CARD",
+      currency: "PHP",
+      availableCredit: "0.00",
+    });
+
+    const { transactionService } = await import("../src/services/transaction.services.js");
+
+    await expect(
+      transactionService.createTransaction("clerk_123", {
+        accountId: "acc_cc",
+        type: "EXPENSE",
+        source: "MANUAL",
+        title: "Over limit charge",
+        amount: "500.00",
+        currency: "PHP",
+        transactionAt: "2026-04-05T02:30:00.000Z",
+      }),
+    ).rejects.toMatchObject({
+      message: "Charge exceeds the card's available credit",
+      statusCode: 422,
+    });
+
+    expect(createTransaction).not.toHaveBeenCalled();
   });
 });
