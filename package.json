@@ -7,7 +7,7 @@
   "scripts": {
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "start": "prisma db push && node dist/index.js",
+    "start": "prisma migrate deploy && node dist/index.js",
     "dev": "nodemon --watch src --ext ts --exec tsx src/index.ts",
     "build": "prisma generate && tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
@@ -16,6 +16,7 @@
     "docker:logs": "docker compose logs -f",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
     "prisma:push": "prisma db push"
   },
   "dependencies": {
