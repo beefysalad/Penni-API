@@ -66,6 +66,43 @@ describe("transactionService.createTransfer", () => {
 
     expect(createTransfer).not.toHaveBeenCalled();
   }, 20000);
+
+  it("rejects card payments above the outstanding balance", async () => {
+    getAccountById
+      .mockResolvedValueOnce({
+        id: "acc_bank",
+        userId: "user_1",
+        type: "BANK_ACCOUNT",
+        currency: "PHP",
+        balance: "5000.00",
+      })
+      .mockResolvedValueOnce({
+        id: "acc_cc",
+        userId: "user_1",
+        type: "CREDIT_CARD",
+        currency: "PHP",
+        balance: "0.00",
+        creditCard: {
+          creditLimit: "20000.00",
+        },
+      });
+
+    const { transactionService } = await import("../src/services/transaction.services.js");
+
+    await expect(
+      transactionService.createTransfer("clerk_123", {
+        fromAccountId: "acc_bank",
+        toAccountId: "acc_cc",
+        amount: "2222.00",
+        transactionAt: "2026-04-09T02:30:00.000Z",
+      }),
+    ).rejects.toMatchObject({
+      message: "Payment exceeds the card's outstanding balance",
+      statusCode: 422,
+    });
+
+    expect(createTransfer).not.toHaveBeenCalled();
+  }, 20000);
 });
 
 describe("transactionService.createTransaction", () => {

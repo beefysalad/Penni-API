@@ -85,8 +85,10 @@ function buildAccountUpdateData(
   }
 
   const currentBalance = Number(account.balance);
-  const nextBalance =
-    currentBalance + getCreditCardBalanceDelta(type, Number(amount), direction);
+  const nextBalance = Math.max(
+    0,
+    currentBalance + getCreditCardBalanceDelta(type, Number(amount), direction),
+  );
 
   return {
     balance: nextBalance.toFixed(2),

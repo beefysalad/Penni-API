@@ -34,6 +34,25 @@ function validateCreditCardExpenseLimit(
   }
 }
 
+function validateCreditCardPaymentLimit(
+  account: {
+    type: string;
+    balance: { toString(): string } | string | number;
+  },
+  type: "EXPENSE" | "INCOME",
+  amount: string,
+) {
+  if (account.type !== "CREDIT_CARD" || type !== "INCOME") {
+    return;
+  }
+
+  const outstandingBalance = Math.max(0, Number(account.balance));
+
+  if (Number(amount) > outstandingBalance) {
+    throw new AppError("Payment exceeds the card's outstanding balance", 422);
+  }
+}
+
 function validateAvailableBalance(
   account: {
     type: string;
@@ -95,6 +114,7 @@ export const transactionService = {
     if (input.accountId) {
       account = await accountRepository.getAccountById(user.id, input.accountId);
       validateCreditCardExpenseLimit(account, input.type, input.amount);
+      validateCreditCardPaymentLimit(account, input.type, input.amount);
       validateAvailableBalance(account, input.type, input.amount);
     }
 
@@ -154,6 +174,7 @@ export const transactionService = {
     }
 
     validateAvailableBalance(fromAccount, "EXPENSE", input.amount);
+    validateCreditCardPaymentLimit(toAccount, "INCOME", input.amount);
 
     if (fromAccount.currency !== toAccount.currency) {
       throw new AppError(
@@ -217,6 +238,17 @@ export const transactionService = {
 
       if (nextAccount.type === "CREDIT_CARD" && nextType === "EXPENSE" && nextAmount > effectiveAvailableCredit) {
         throw new AppError("Charge exceeds the card's available credit", 422);
+      }
+
+      const effectiveOutstandingBalance =
+        nextAccount.type === "CREDIT_CARD" &&
+        existingTransaction.accountId === nextAccountId &&
+        existingTransaction.type === "INCOME"
+          ? Math.max(0, Number(nextAccount.balance) + existingAmount)
+          : Math.max(0, Number(nextAccount.balance));
+
+      if (nextAccount.type === "CREDIT_CARD" && nextType === "INCOME" && nextAmount > effectiveOutstandingBalance) {
+        throw new AppError("Payment exceeds the card's outstanding balance", 422);
       }
 
       const isSameAssetAccount =

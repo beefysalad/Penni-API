@@ -14,7 +14,10 @@ function serializeAccount(account: Awaited<ReturnType<typeof accountService.crea
     : null;
   const availableCredit =
     creditLimit !== null
-      ? Math.max(0, creditLimit - Number(account.balance.toString())).toFixed(2)
+      ? Math.min(
+          creditLimit,
+          Math.max(0, creditLimit - Number(account.balance.toString())),
+        ).toFixed(2)
       : "0.00";
 
   return {
