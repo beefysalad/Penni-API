@@ -14,7 +14,10 @@ import { userService } from "./user.services.js";
 function validateCreditCardExpenseLimit(
   account: {
     type: string;
-    availableCredit: { toString(): string } | string | number | null;
+    balance: { toString(): string } | string | number;
+    creditCard?: {
+      creditLimit: { toString(): string } | string | number;
+    } | null;
   },
   type: "EXPENSE" | "INCOME",
   amount: string,
@@ -23,7 +26,8 @@ function validateCreditCardExpenseLimit(
     return;
   }
 
-  const availableCredit = Number(account.availableCredit ?? 0);
+  const creditLimit = Number(account.creditCard?.creditLimit ?? 0);
+  const availableCredit = Math.max(0, creditLimit - Number(account.balance));
 
   if (Number(amount) > availableCredit) {
     throw new AppError("Charge exceeds the card's available credit", 422);
@@ -201,7 +205,8 @@ export const transactionService = {
       const nextAccount = await accountRepository.getAccountById(user.id, nextAccountId);
       const existingAmount = Number(existingTransaction.amount);
       const nextAmount = Number(input.amount ?? existingTransaction.amount);
-      const availableCredit = Number(nextAccount.availableCredit ?? 0);
+      const creditLimit = Number(nextAccount.creditCard?.creditLimit ?? 0);
+      const availableCredit = Math.max(0, creditLimit - Number(nextAccount.balance));
       const isSameCreditCard =
         nextAccount.type === "CREDIT_CARD" &&
         existingTransaction.accountId === nextAccountId;

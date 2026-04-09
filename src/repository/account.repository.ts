@@ -9,13 +9,17 @@ export type CreateAccountInput = {
   currency: string;
   balance: string;
   creditLimit?: string;
-  availableCredit?: string;
   dueDayOfMonth?: number;
+  statementDayOfMonth?: number;
   institutionName?: string;
   clientUpdatedAt?: string;
 };
 
 export type UpdateAccountInput = Partial<Omit<CreateAccountInput, "userId">>;
+
+const creditCardInclude = {
+  creditCard: true,
+} as const;
 
 export const accountRepository = {
   listAccountsByUserId: async (userId: string) => {
@@ -24,6 +28,7 @@ export const accountRepository = {
         userId,
         deletedAt: null,
       },
+      include: creditCardInclude,
       orderBy: {
         createdAt: "desc",
       },
@@ -38,9 +43,19 @@ export const accountRepository = {
         type: input.type,
         currency: input.currency,
         balance: input.balance,
-        ...(input.creditLimit ? { creditLimit: input.creditLimit } : {}),
-        ...(input.availableCredit ? { availableCredit: input.availableCredit } : {}),
-        ...(input.dueDayOfMonth ? { dueDayOfMonth: input.dueDayOfMonth } : {}),
+        ...(input.type === "CREDIT_CARD" && input.creditLimit && input.dueDayOfMonth
+          ? {
+              creditCard: {
+                create: {
+                  creditLimit: input.creditLimit,
+                  dueDayOfMonth: input.dueDayOfMonth,
+                  ...(input.statementDayOfMonth !== undefined
+                    ? { statementDayOfMonth: input.statementDayOfMonth }
+                    : {}),
+                },
+              },
+            }
+          : {}),
         ...(input.clientId ? { clientId: input.clientId } : {}),
         ...(input.institutionName
           ? { institutionName: input.institutionName }
@@ -49,6 +64,7 @@ export const accountRepository = {
           ? { clientUpdatedAt: new Date(input.clientUpdatedAt) }
           : {}),
       },
+      include: creditCardInclude,
     });
   },
 
@@ -59,6 +75,7 @@ export const accountRepository = {
         userId,
         deletedAt: null,
       },
+      include: creditCardInclude,
     });
 
     if (!account) {
@@ -69,7 +86,8 @@ export const accountRepository = {
   },
 
   updateAccount: async (userId: string, accountId: string, input: UpdateAccountInput) => {
-    await accountRepository.getAccountById(userId, accountId);
+    const existingAccount = await accountRepository.getAccountById(userId, accountId);
+    const nextType = input.type ?? existingAccount.type;
 
     return prisma.account.update({
       where: {
@@ -81,18 +99,47 @@ export const accountRepository = {
         ...(input.type !== undefined ? { type: input.type } : {}),
         ...(input.currency !== undefined ? { currency: input.currency } : {}),
         ...(input.balance !== undefined ? { balance: input.balance } : {}),
-        ...(input.creditLimit !== undefined ? { creditLimit: input.creditLimit } : {}),
-        ...(input.availableCredit !== undefined
-          ? { availableCredit: input.availableCredit }
-          : {}),
-        ...(input.dueDayOfMonth !== undefined ? { dueDayOfMonth: input.dueDayOfMonth } : {}),
         ...(input.institutionName !== undefined
           ? { institutionName: input.institutionName }
           : {}),
+        ...(nextType === "CREDIT_CARD"
+          ? {
+              creditCard: {
+                upsert: {
+                  create: {
+                    creditLimit:
+                      input.creditLimit ?? existingAccount.creditCard?.creditLimit.toString() ?? "0",
+                    dueDayOfMonth:
+                      input.dueDayOfMonth ?? existingAccount.creditCard?.dueDayOfMonth ?? 1,
+                    ...(input.statementDayOfMonth !== undefined
+                      ? { statementDayOfMonth: input.statementDayOfMonth }
+                      : existingAccount.creditCard?.statementDayOfMonth !== null &&
+                          existingAccount.creditCard?.statementDayOfMonth !== undefined
+                        ? { statementDayOfMonth: existingAccount.creditCard.statementDayOfMonth }
+                        : {}),
+                  },
+                  update: {
+                    ...(input.creditLimit !== undefined ? { creditLimit: input.creditLimit } : {}),
+                    ...(input.dueDayOfMonth !== undefined ? { dueDayOfMonth: input.dueDayOfMonth } : {}),
+                    ...(input.statementDayOfMonth !== undefined
+                      ? { statementDayOfMonth: input.statementDayOfMonth }
+                      : {}),
+                  },
+                },
+              },
+            }
+          : existingAccount.creditCard
+            ? {
+                creditCard: {
+                  delete: true,
+                },
+              }
+            : {}),
         ...(input.clientUpdatedAt !== undefined
           ? { clientUpdatedAt: new Date(input.clientUpdatedAt) }
           : {}),
       },
+      include: creditCardInclude,
     });
   },
 
@@ -107,6 +154,7 @@ export const accountRepository = {
         deletedAt: new Date(),
         isArchived: true,
       },
+      include: creditCardInclude,
     });
   },
 };

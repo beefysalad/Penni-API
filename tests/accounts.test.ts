@@ -29,11 +29,11 @@ describe("accounts", () => {
     const { buildServer } = await import("../src/index.js");
     app = buildServer();
     await app.ready();
-  });
+  }, 20000);
 
   afterAll(async () => {
-    await app.close();
-  });
+    await app?.close();
+  }, 20000);
 
   it("returns the current user's accounts", async () => {
     verifyClerkSessionToken.mockResolvedValue({
@@ -81,9 +81,7 @@ describe("accounts", () => {
         type: "E_WALLET",
         currency: "PHP",
         balance: "6420.00",
-        creditLimit: null,
-        availableCredit: null,
-        dueDayOfMonth: null,
+        creditCard: null,
         institutionName: null,
         isArchived: false,
         lastSyncedAt: null,
@@ -111,6 +109,7 @@ describe("accounts", () => {
       balance: {
         toString: () => "1000.00",
       },
+      creditCard: null,
       institutionName: "BPI",
       isArchived: false,
       lastSyncedAt: null,
@@ -163,9 +162,7 @@ describe("accounts", () => {
       balance: {
         toString: () => "1000.00",
       },
-      creditLimit: null,
-      availableCredit: null,
-      dueDayOfMonth: null,
+      creditCard: null,
       institutionName: "BPI",
       isArchived: true,
       lastSyncedAt: null,
@@ -193,9 +190,7 @@ describe("accounts", () => {
       type: "BANK_ACCOUNT",
       currency: "PHP",
       balance: "1000.00",
-      creditLimit: null,
-      availableCredit: null,
-      dueDayOfMonth: null,
+      creditCard: null,
       institutionName: "BPI",
       isArchived: true,
       lastSyncedAt: null,

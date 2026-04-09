@@ -9,12 +9,25 @@ import type {
 } from "../schemas/account.schema.js";
 
 function serializeAccount(account: Awaited<ReturnType<typeof accountService.createAccount>>) {
+  const creditLimit = account.creditCard?.creditLimit
+    ? Number(account.creditCard.creditLimit.toString())
+    : null;
+  const availableCredit =
+    creditLimit !== null
+      ? Math.max(0, creditLimit - Number(account.balance.toString())).toFixed(2)
+      : "0.00";
+
   return {
     ...account,
     balance: account.balance.toString(),
-    creditLimit: account.creditLimit ? account.creditLimit.toString() : null,
-    availableCredit: account.availableCredit ? account.availableCredit.toString() : null,
-    dueDayOfMonth: account.dueDayOfMonth ?? null,
+    creditCard: account.creditCard
+      ? {
+          creditLimit: account.creditCard.creditLimit.toString(),
+          availableCredit,
+          dueDayOfMonth: account.creditCard.dueDayOfMonth,
+          statementDayOfMonth: account.creditCard.statementDayOfMonth ?? null,
+        }
+      : null,
     lastSyncedAt: account.lastSyncedAt
       ? AppHelper._serializeDate(account.lastSyncedAt)
       : null,

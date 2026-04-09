@@ -73,7 +73,6 @@ function buildAccountUpdateData(
   account: {
     type: string;
     balance: { toString(): string } | string | number;
-    creditLimit: { toString(): string } | string | number | null;
   },
   type: TransactionType,
   amount: string,
@@ -86,14 +85,11 @@ function buildAccountUpdateData(
   }
 
   const currentBalance = Number(account.balance);
-  const creditLimit = account.creditLimit !== null ? Number(account.creditLimit) : 0;
   const nextBalance =
     currentBalance + getCreditCardBalanceDelta(type, Number(amount), direction);
-  const nextAvailableCredit = Math.max(0, creditLimit - nextBalance);
 
   return {
     balance: nextBalance.toFixed(2),
-    availableCredit: nextAvailableCredit.toFixed(2),
   };
 }
 
@@ -170,6 +166,9 @@ export const transactionRepository = {
             userId: input.userId,
             deletedAt: null,
           },
+          include: {
+            creditCard: true,
+          },
         });
 
         if (!account) {
@@ -215,12 +214,18 @@ export const transactionRepository = {
             userId: input.userId,
             deletedAt: null,
           },
+          include: {
+            creditCard: true,
+          },
         }),
         tx.account.findFirst({
           where: {
             id: input.toAccountId,
             userId: input.userId,
             deletedAt: null,
+          },
+          include: {
+            creditCard: true,
           },
         }),
       ]);
@@ -330,6 +335,9 @@ export const transactionRepository = {
             userId,
             deletedAt: null,
           },
+          include: {
+            creditCard: true,
+          },
         });
 
         if (existingAccount) {
@@ -353,6 +361,9 @@ export const transactionRepository = {
             id: nextAccountId,
             userId,
             deletedAt: null,
+          },
+          include: {
+            creditCard: true,
           },
         });
 
@@ -416,6 +427,9 @@ export const transactionRepository = {
             id: existingTransaction.accountId,
             userId,
             deletedAt: null,
+          },
+          include: {
+            creditCard: true,
           },
         });
 

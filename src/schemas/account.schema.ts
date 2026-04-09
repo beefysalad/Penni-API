@@ -13,9 +13,14 @@ const dateTimeSchema = z.string().datetime();
 function validateCreditCardFields(
   value: {
     type?: "CASH" | "BANK_ACCOUNT" | "E_WALLET" | "CREDIT_CARD" | "OTHER" | undefined;
-    creditLimit?: string | undefined;
-    availableCredit?: string | undefined;
-    dueDayOfMonth?: number | undefined;
+    creditCard?:
+      | {
+          creditLimit?: string | undefined;
+          availableCredit?: string | undefined;
+          dueDayOfMonth?: number | undefined;
+          statementDayOfMonth?: number | undefined;
+        }
+      | undefined;
   },
   ctx: z.RefinementCtx,
   requireAllFields: boolean,
@@ -24,38 +29,38 @@ function validateCreditCardFields(
     return;
   }
 
-  if (requireAllFields && !value.creditLimit) {
+  if (requireAllFields && !value.creditCard?.creditLimit) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ["creditLimit"],
+      path: ["creditCard", "creditLimit"],
       message: "Credit limit is required for credit cards",
     });
   }
 
-  if (requireAllFields && !value.availableCredit) {
+  if (requireAllFields && !value.creditCard?.availableCredit) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ["availableCredit"],
+      path: ["creditCard", "availableCredit"],
       message: "Available credit is required for credit cards",
     });
   }
 
-  if (requireAllFields && !value.dueDayOfMonth) {
+  if (requireAllFields && !value.creditCard?.dueDayOfMonth) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ["dueDayOfMonth"],
+      path: ["creditCard", "dueDayOfMonth"],
       message: "Due day is required for credit cards",
     });
   }
 
-  if (value.creditLimit && value.availableCredit) {
-    const creditLimit = Number(value.creditLimit);
-    const availableCredit = Number(value.availableCredit);
+  if (value.creditCard?.creditLimit && value.creditCard?.availableCredit) {
+    const creditLimit = Number(value.creditCard.creditLimit);
+    const availableCredit = Number(value.creditCard.availableCredit);
 
     if (availableCredit > creditLimit) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["availableCredit"],
+        path: ["creditCard", "availableCredit"],
         message: "Available credit cannot be higher than the total limit",
       });
     }
@@ -70,10 +75,15 @@ export const accountResponseSchema = z.object({
   type: accountTypeSchema,
   currency: z.string(),
   balance: z.string(),
-  creditLimit: z.string().nullable(),
-  availableCredit: z.string().nullable(),
-  dueDayOfMonth: z.number().int().min(1).max(31).nullable(),
   institutionName: z.string().nullable(),
+  creditCard: z
+    .object({
+      creditLimit: z.string(),
+      availableCredit: z.string(),
+      dueDayOfMonth: z.number().int().min(1).max(31),
+      statementDayOfMonth: z.number().int().min(1).max(31).nullable(),
+    })
+    .nullable(),
   isArchived: z.boolean(),
   lastSyncedAt: dateTimeSchema.nullable(),
   createdAt: dateTimeSchema,
@@ -88,9 +98,14 @@ const accountBodyBaseSchema = z.object({
   type: accountTypeSchema,
   currency: z.string().min(3).max(3).default("PHP"),
   balance: z.string().regex(/^-?\d+(\.\d{1,2})?$/),
-  creditLimit: z.string().regex(/^-?\d+(\.\d{1,2})?$/).optional(),
-  availableCredit: z.string().regex(/^-?\d+(\.\d{1,2})?$/).optional(),
-  dueDayOfMonth: z.number().int().min(1).max(31).optional(),
+  creditCard: z
+    .object({
+      creditLimit: z.string().regex(/^-?\d+(\.\d{1,2})?$/).optional(),
+      availableCredit: z.string().regex(/^-?\d+(\.\d{1,2})?$/).optional(),
+      dueDayOfMonth: z.number().int().min(1).max(31).optional(),
+      statementDayOfMonth: z.number().int().min(1).max(31).optional(),
+    })
+    .optional(),
   institutionName: z.string().min(1).max(120).optional(),
   clientUpdatedAt: z.string().datetime().optional(),
 });

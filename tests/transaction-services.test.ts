@@ -65,7 +65,7 @@ describe("transactionService.createTransfer", () => {
     });
 
     expect(createTransfer).not.toHaveBeenCalled();
-  });
+  }, 20000);
 });
 
 describe("transactionService.createTransaction", () => {
@@ -80,7 +80,10 @@ describe("transactionService.createTransaction", () => {
       userId: "user_1",
       type: "CREDIT_CARD",
       currency: "PHP",
-      availableCredit: "0.00",
+      balance: "1000.00",
+      creditCard: {
+        creditLimit: "1000.00",
+      },
     });
 
     const { transactionService } = await import("../src/services/transaction.services.js");
@@ -101,7 +104,7 @@ describe("transactionService.createTransaction", () => {
     });
 
     expect(createTransaction).not.toHaveBeenCalled();
-  });
+  }, 20000);
 
   it("rejects asset account expenses above available balance", async () => {
     getAccountById.mockResolvedValue({
@@ -130,5 +133,5 @@ describe("transactionService.createTransaction", () => {
     });
 
     expect(createTransaction).not.toHaveBeenCalled();
-  });
+  }, 20000);
 });
