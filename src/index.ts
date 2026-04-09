@@ -18,6 +18,7 @@ import { transactionRoutes } from "./routes/transaction.routes.js";
 import { plannedItemRoutes } from "./routes/planned-item.routes.js";
 import { budgetRoutes } from "./routes/budget.routes.js";
 import { feedbackRoutes } from "./routes/feedback.routes.js";
+import { debtRoutes } from "./routes/debt.routes.js";
 
 export function buildServer() {
   const server = fastify({
@@ -42,6 +43,7 @@ export function buildServer() {
   server.register(plannedItemRoutes, { prefix: "/api" });
   server.register(budgetRoutes, { prefix: "/api" });
   server.register(feedbackRoutes, { prefix: "/api" });
+  server.register(debtRoutes, { prefix: "/api" });
 
   return server;
 }
