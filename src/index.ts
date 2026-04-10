@@ -11,6 +11,11 @@ import { errorHandlerPlugin } from "./plugins/error-handler.js";
 import { corsPlugin } from "./plugins/cors.js";
 import { prismaPlugin } from "./plugins/prisma.js";
 import { clerkAuthPlugin } from "./plugins/clerk-auth.js";
+import {
+  defaultRateLimitSkip,
+  rateLimitPlugin,
+  type RateLimitPluginOptions,
+} from "./plugins/rate-limit.js";
 import { userRoutes } from "./routes/user.routes.js";
 import { accountRoutes } from "./routes/account.routes.js";
 import { categoryRoutes } from "./routes/category.routes.js";
@@ -20,7 +25,11 @@ import { budgetRoutes } from "./routes/budget.routes.js";
 import { feedbackRoutes } from "./routes/feedback.routes.js";
 import { debtRoutes } from "./routes/debt.routes.js";
 
-export function buildServer() {
+type BuildServerOptions = {
+  rateLimit?: Partial<RateLimitPluginOptions>;
+};
+
+export function buildServer(options: BuildServerOptions = {}) {
   const server = fastify({
     logger: env.nodeEnv === "development",
   }).withTypeProvider<ZodTypeProvider>();
@@ -34,6 +43,11 @@ export function buildServer() {
   server.register(swaggerPlugin);
   server.register(errorHandlerPlugin);
   server.register(clerkAuthPlugin);
+  server.register(rateLimitPlugin, {
+    max: options.rateLimit?.max ?? env.rateLimitMax,
+    timeWindowMs: options.rateLimit?.timeWindowMs ?? env.rateLimitWindowMs,
+    skip: options.rateLimit?.skip ?? defaultRateLimitSkip,
+  });
 
   server.register(healthRoutes, { prefix: "/api" });
   server.register(userRoutes, { prefix: "/api" });

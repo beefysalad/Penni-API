@@ -1,7 +1,8 @@
+import fp from "fastify-plugin";
 import type { FastifyInstance } from "fastify";
 import { AppError } from "../errors/app-error.js";
 
-export async function errorHandlerPlugin(app: FastifyInstance) {
+async function errorHandlerPluginImpl(app: FastifyInstance) {
   app.setErrorHandler((error: unknown, _request, reply) => {
     const err = error as { validation?: unknown };
 
@@ -29,3 +30,5 @@ export async function errorHandlerPlugin(app: FastifyInstance) {
     });
   });
 }
+
+export const errorHandlerPlugin = fp(errorHandlerPluginImpl);

@@ -32,6 +32,13 @@ cp .env.example .env
 
 Ensure you have your **Clerk Secret Key** and **PostgreSQL Database URL** properly configured in the `.env` file.
 
+Optional rate limiting environment variables:
+
+```bash
+RATE_LIMIT_MAX=100
+RATE_LIMIT_WINDOW_MS=60000
+```
+
 ### 3. Install Dependencies
 ```bash
 npm install

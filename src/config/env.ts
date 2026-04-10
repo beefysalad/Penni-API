@@ -6,6 +6,8 @@ const envSchema = z.object({
   APP_NAME: z.string().default("Penni API"),
   HOST: z.string().default("0.0.0.0"),
   PORT: z.coerce.number().int().positive().default(3000),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   CORS_ORIGIN: z.string().optional(),
   DATABASE_URL: z.string().min(1),
   CLERK_SECRET_KEY: z.string().optional(),
@@ -19,6 +21,8 @@ export const env = {
   appName: parsedEnv.APP_NAME,
   host: parsedEnv.HOST,
   port: parsedEnv.PORT,
+  rateLimitMax: parsedEnv.RATE_LIMIT_MAX,
+  rateLimitWindowMs: parsedEnv.RATE_LIMIT_WINDOW_MS,
   corsOrigin: parsedEnv.CORS_ORIGIN?.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),
