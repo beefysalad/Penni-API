@@ -159,6 +159,35 @@ export const transactionRepository = {
     return { totalIncome, totalExpense };
   },
 
+  findRecurringTransactionForPlannedItemOccurrence: async (
+    userId: string,
+    plannedItemId: string,
+    transactionAt: string,
+  ) => {
+    const occurrenceDate = new Date(transactionAt);
+    const start = new Date(
+      occurrenceDate.getFullYear(),
+      occurrenceDate.getMonth(),
+      occurrenceDate.getDate(),
+    );
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    return prisma.transaction.findFirst({
+      where: {
+        userId,
+        plannedItemId,
+        source: "RECURRING",
+        deletedAt: null,
+        transactionAt: {
+          gte: start,
+          lt: end,
+        },
+      },
+      orderBy: [{ transactionAt: "desc" }, { createdAt: "desc" }],
+    });
+  },
+
   createTransaction: async (input: CreateTransactionInput) => {
     return prisma.$transaction(async (tx) => {
       if (input.accountId) {

@@ -17,6 +17,12 @@ function startOfDay(value: Date) {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
 
+function isSameDay(left: Date | null | undefined, right: Date | null | undefined) {
+  if (!left || !right) return false;
+
+  return startOfDay(left).getTime() === startOfDay(right).getTime();
+}
+
 function endOfMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
 }
@@ -95,6 +101,7 @@ function normalizeNextOccurrence(item: {
   semiMonthlyDays?: number[];
   nextOccurrenceAt?: Date | string | null;
   isActive?: boolean;
+  fromDate?: Date | string;
 }) {
   if (item.isActive === false) return null;
 
@@ -106,7 +113,36 @@ function normalizeNextOccurrence(item: {
   }
 
   const days = item.semiMonthlyDays ?? [];
-  return getNextOccurrenceForRecurrence(item.recurrence, startDate, days, startDate);
+  const fromDate = item.fromDate ? new Date(item.fromDate) : startDate;
+  return getNextOccurrenceForRecurrence(item.recurrence, startDate, days, fromDate);
+}
+
+function didScheduleChange(
+  input: UpdatePlannedItemBody,
+) {
+  return (
+    input.startDate !== undefined ||
+    input.recurrence !== undefined ||
+    input.semiMonthlyDays !== undefined ||
+    input.isActive !== undefined
+  );
+}
+
+function buildCompletedOccurrenceUpdate(
+  plannedItem: NonNullable<PlannedItemRecord>,
+  transactionAt: Date,
+) {
+  const nextOccurrenceAt = getNextOccurrenceForRecurrence(
+    plannedItem.recurrence,
+    plannedItem.startDate,
+    plannedItem.semiMonthlyDays,
+    new Date(startOfDay(transactionAt).getTime() + 24 * 60 * 60 * 1000),
+  );
+
+  return {
+    nextOccurrenceAt: nextOccurrenceAt.toISOString(),
+    lastProcessedAt: transactionAt.toISOString(),
+  };
 }
 
 export const plannedItemService = {
@@ -211,6 +247,7 @@ export const plannedItemService = {
     const nextRecurrence = input.recurrence ?? existingPlannedItem.recurrence;
     const nextSemiMonthlyDays = input.semiMonthlyDays ?? existingPlannedItem.semiMonthlyDays;
     const nextIsActive = input.isActive ?? existingPlannedItem.isActive;
+    const scheduleChanged = didScheduleChange(input);
     const normalizedNextOccurrence =
       input.nextOccurrenceAt !== undefined
         ? input.nextOccurrenceAt
@@ -218,10 +255,11 @@ export const plannedItemService = {
             recurrence: nextRecurrence,
             startDate: nextStartDate,
             ...(nextSemiMonthlyDays ? { semiMonthlyDays: nextSemiMonthlyDays } : {}),
-            ...(existingPlannedItem.nextOccurrenceAt
+            ...(!scheduleChanged && existingPlannedItem.nextOccurrenceAt
               ? { nextOccurrenceAt: existingPlannedItem.nextOccurrenceAt }
               : {}),
             ...(nextIsActive !== undefined ? { isActive: nextIsActive } : {}),
+            ...(scheduleChanged ? { fromDate: new Date() } : {}),
           })?.toISOString();
 
     return plannedItemRepository.updatePlannedItem(user.id, plannedItemId, {
@@ -263,6 +301,26 @@ export const plannedItemService = {
       ? new Date(input.transactionAt)
       : plannedItem.nextOccurrenceAt ?? new Date();
 
+    const existingOccurrenceTransaction =
+      await transactionRepository.findRecurringTransactionForPlannedItemOccurrence(
+        user.id,
+        plannedItem.id,
+        transactionAt.toISOString(),
+      );
+
+    if (existingOccurrenceTransaction) {
+      const completedUpdate = buildCompletedOccurrenceUpdate(plannedItem, transactionAt);
+
+      if (
+        isSameDay(plannedItem.lastProcessedAt, transactionAt) &&
+        plannedItem.nextOccurrenceAt?.toISOString() === completedUpdate.nextOccurrenceAt
+      ) {
+        return plannedItem;
+      }
+
+      return plannedItemRepository.updatePlannedItem(user.id, plannedItem.id, completedUpdate);
+    }
+
     if (plannedItem.accountId) {
       await accountRepository.getAccountById(user.id, plannedItem.accountId);
     }
@@ -285,17 +343,11 @@ export const plannedItemService = {
       ...(plannedItem.notes ? { notes: plannedItem.notes } : {}),
     });
 
-    const nextOccurrenceAt = getNextOccurrenceForRecurrence(
-      plannedItem.recurrence,
-      plannedItem.startDate,
-      plannedItem.semiMonthlyDays,
-      new Date(startOfDay(transactionAt).getTime() + 24 * 60 * 60 * 1000),
+    return plannedItemRepository.updatePlannedItem(
+      user.id,
+      plannedItem.id,
+      buildCompletedOccurrenceUpdate(plannedItem, transactionAt),
     );
-
-    return plannedItemRepository.updatePlannedItem(user.id, plannedItem.id, {
-      nextOccurrenceAt: nextOccurrenceAt.toISOString(),
-      lastProcessedAt: transactionAt.toISOString(),
-    });
   },
 
   deletePlannedItem: async (clerkUserId: string, plannedItemId: string) => {
